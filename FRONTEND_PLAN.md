@@ -22,9 +22,10 @@ bound to the AgentVault contracts (router [Vault.sol](src/Vault.sol) + per-strat
 - **Observability**: allocation pie, per-strategy NAV, activity feed built
   from contract events.
 
-Target chains wired: **Base mainnet**, **Base Sepolia**, **Mainnet**, **Foundry
-(anvil)**. Each vault is always qualified by `chainId` so the same address
-on different chains is treated as distinct.
+Target chain: **Base Sepolia** (primary deployment target). **Foundry (anvil)**
+is also wired for local development against a Base Sepolia fork. Each vault
+is always qualified by `chainId` so the same address on different chains is
+treated as distinct.
 
 ## Stack actually used
 
@@ -124,9 +125,9 @@ to an on-chain registry without UI rewrites once a `VaultFactory` lands.
 ## JSON-RPC proxy
 
 [frontend/app/api/rpc/[chain]/route.ts](frontend/app/api/rpc/[chain]/route.ts)
-is a server-side passthrough. wagmi transports point at `/api/rpc/base-mainnet`,
-`/api/rpc/base-sepolia`, `/api/rpc/mainnet`, `/api/rpc/local`. This avoids
-Alchemy CORS and keeps API keys off the client. The default log lookback is
+is a server-side passthrough. wagmi transports point at `/api/rpc/base-sepolia`
+and `/api/rpc/local`. This avoids Alchemy CORS and keeps API keys off the
+client. The default log lookback is
 `NEXT_PUBLIC_LOG_LOOKBACK_BLOCKS=10` because Alchemy's free tier rejects
 `eth_getLogs` ranges > 10 blocks; a paid RPC can raise this freely.
 
@@ -349,18 +350,17 @@ keyed by `(chainId, vault, account)` — never a global `isAdmin` flag.
 
 - `NEXT_PUBLIC_VAULTS` — JSON array of `VaultEntry` for build-time seed.
 - `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` — RainbowKit / WalletConnect.
-- `NEXT_PUBLIC_BASE_RPC_URL`, `NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL`,
-  `NEXT_PUBLIC_MAINNET_RPC_URL`, `NEXT_PUBLIC_LOCAL_RPC_URL` — consumed by
-  the server-side RPC proxy.
+- `NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL`, `NEXT_PUBLIC_LOCAL_RPC_URL` — consumed
+  by the server-side RPC proxy.
 - `NEXT_PUBLIC_LOG_LOOKBACK_BLOCKS` — default 10 (Alchemy free-tier limit).
 
 ## Verification
 
-End-to-end against the Base fork (same RPC the Foundry tests hit):
+End-to-end against a Base Sepolia fork (same RPC the Foundry tests hit):
 
 1. `forge build` to regenerate ABIs.
 2. `cd frontend && pnpm install && pnpm dev`.
-3. Run `anvil --fork-url $BASE_RPC_URL --chain-id 8453 --host 127.0.0.1
+3. Run `anvil --fork-url $BASE_SEPOLIA_RPC_URL --chain-id 84532 --host 127.0.0.1
    --port 8545` and deploy via
    [script/DeployDual.s.sol](script/DeployDual.s.sol) against the anvil fork.
 4. Deploy **at least two vaults** (e.g. one USDC, one WETH) and seed them
