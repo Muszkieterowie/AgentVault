@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -30 1280 820" width="1280" height="820" font-family="Helvetica, Arial, sans-serif" style="background:#ffffff">
+<defs>
+</defs>
+<rect x="40" y="80" width="200" height="300" rx="12" ry="12" fill="#e3fafc" stroke="#0c8599" stroke-width="2" stroke-dasharray="8,6" opacity="1.0" />
+<rect x="70" y="150" width="140" height="60" rx="12" ry="12" fill="#a5d8ff" stroke="#1971c2" stroke-width="2"  opacity="1.0" />
+<rect x="70" y="240" width="140" height="60" rx="12" ry="12" fill="#a5d8ff" stroke="#1971c2" stroke-width="2"  opacity="1.0" />
+<rect x="340" y="80" width="260" height="300" rx="12" ry="12" fill="#ebfbee" stroke="#2f9e44" stroke-width="2" stroke-dasharray="8,6" opacity="1.0" />
+<rect x="360" y="160" width="220" height="160" rx="12" ry="12" fill="#b2f2bb" stroke="#2f9e44" stroke-width="3"  opacity="1.0" />
+<rect x="700" y="80" width="240" height="300" rx="12" ry="12" fill="#fff4e6" stroke="#e8590c" stroke-width="2" stroke-dasharray="8,6" opacity="1.0" />
+<rect x="720" y="150" width="200" height="80" rx="12" ry="12" fill="#ffd8a8" stroke="#e8590c" stroke-width="2"  opacity="1.0" />
+<rect x="720" y="260" width="200" height="80" rx="12" ry="12" fill="#ffd8a8" stroke="#e8590c" stroke-width="2"  opacity="1.0" />
+<rect x="1020" y="80" width="220" height="300" rx="12" ry="12" fill="#f3f0ff" stroke="#862e9c" stroke-width="2" stroke-dasharray="8,6" opacity="1.0" />
+<rect x="1040" y="140" width="180" height="60" rx="12" ry="12" fill="#e5dbff" stroke="#862e9c" stroke-width="2"  opacity="1.0" />
+<rect x="1040" y="220" width="180" height="60" rx="12" ry="12" fill="#e5dbff" stroke="#862e9c" stroke-width="2"  opacity="1.0" />
+<rect x="1040" y="300" width="180" height="60" rx="12" ry="12" fill="#e5dbff" stroke="#862e9c" stroke-width="2"  opacity="1.0" />
+<rect x="40" y="440" width="1200" height="180" rx="12" ry="12" fill="#f1f3f5" stroke="#495057" stroke-width="2" stroke-dasharray="8,6" opacity="1.0" />
+<ellipse cx="470.0" cy="525.0" rx="110.0" ry="35.0" fill="#dee2e6" stroke="#495057" stroke-width="2"  opacity="1.0" />
+<ellipse cx="470.0" cy="605.0" rx="110.0" ry="35.0" fill="#dee2e6" stroke="#495057" stroke-width="2"  opacity="1.0" />
+<ellipse cx="820.0" cy="525.0" rx="100.0" ry="35.0" fill="#ffc9c9" stroke="#c92a2a" stroke-width="2"  opacity="1.0" />
+<ellipse cx="820.0" cy="605.0" rx="100.0" ry="35.0" fill="#ffc9c9" stroke="#c92a2a" stroke-width="2"  opacity="1.0" />
+<defs><marker id="arrow_1971c2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#1971c2"/></marker></defs>
+<polyline points="210,180 360,240" fill="none" stroke="#1971c2" stroke-width="2"  opacity="1.0" marker-end="url(#arrow_1971c2)" />
+<defs><marker id="arrow_1971c2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#1971c2"/></marker></defs>
+<polyline points="210,270 360,240" fill="none" stroke="#1971c2" stroke-width="2"  opacity="1.0" marker-end="url(#arrow_1971c2)" />
+<defs><marker id="arrow_2f9e44" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2f9e44"/></marker></defs>
+<polyline points="580,200 720,190" fill="none" stroke="#2f9e44" stroke-width="2"  opacity="1.0" marker-end="url(#arrow_2f9e44)" />
+<defs><marker id="arrow_2f9e44" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2f9e44"/></marker></defs>
+<polyline points="580,280 720,300" fill="none" stroke="#2f9e44" stroke-width="2"  opacity="1.0" marker-end="url(#arrow_2f9e44)" />
+<defs><marker id="arrow_e8590c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#e8590c"/></marker></defs>
+<polyline points="920,190 1040,170" fill="none" stroke="#e8590c" stroke-width="2"  opacity="1.0" marker-end="url(#arrow_e8590c)" />
+<defs><marker id="arrow_e8590c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#e8590c"/></marker></defs>
+<polyline points="920,200 1040,250" fill="none" stroke="#e8590c" stroke-width="2"  opacity="1.0" marker-end="url(#arrow_e8590c)" />
+<defs><marker id="arrow_e8590c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#e8590c"/></marker></defs>
+<polyline points="920,300 1040,330" fill="none" stroke="#e8590c" stroke-width="2"  opacity="1.0" marker-end="url(#arrow_e8590c)" />
+<defs><marker id="arrow_c92a2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#c92a2a"/></marker></defs>
+<polyline points="820,490 820,240" fill="none" stroke="#c92a2a" stroke-width="2" stroke-dasharray="8,6" opacity="1.0" marker-end="url(#arrow_c92a2a)" />
+<defs><marker id="arrow_c92a2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#c92a2a"/></marker></defs>
+<polyline points="820,570 820,340" fill="none" stroke="#c92a2a" stroke-width="2" stroke-dasharray="8,6" opacity="1.0" marker-end="url(#arrow_c92a2a)" />
+<defs><marker id="arrow_495057" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#495057"/></marker></defs>
+<polyline points="470,490 470,320" fill="none" stroke="#495057" stroke-width="2" stroke-dasharray="8,6" opacity="1.0" marker-end="url(#arrow_495057)" />
+<defs><marker id="arrow_495057" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#495057"/></marker></defs>
+<polyline points="520,570 540,320" fill="none" stroke="#495057" stroke-width="2" stroke-dasharray="8,6" opacity="1.0" marker-end="url(#arrow_495057)" />
+<text x="40" y="38.0" font-size="28" fill="#1e1e1e" text-anchor="start">AgentVault — high level architecture</text>
+<text x="56" y="110.0" font-size="18" fill="#0c8599" text-anchor="start">Users</text>
+<text x="140.0" y="186.0" font-size="18" fill="#1e1e1e" text-anchor="middle">User A</text>
+<text x="140.0" y="276.0" font-size="18" fill="#1e1e1e" text-anchor="middle">User B</text>
+<text x="356" y="110.0" font-size="18" fill="#2f9e44" text-anchor="start">Vault (ERC-4626)</text>
+<text x="380" y="196.0" font-size="16" fill="#1e1e1e" text-anchor="start">Vault</text>
+<text x="380" y="216.0" font-size="16" fill="#1e1e1e" text-anchor="start">— mints/burns shares</text>
+<text x="380" y="236.0" font-size="16" fill="#1e1e1e" text-anchor="start">— auto-rebalance</text>
+<text x="380" y="256.0" font-size="16" fill="#1e1e1e" text-anchor="start">— factory + AccessControl root</text>
+<text x="716" y="110.0" font-size="18" fill="#e8590c" text-anchor="start">Strategies (EIP-1167)</text>
+<text x="820.0" y="182.0" font-size="16" fill="#1e1e1e" text-anchor="middle">Strategy 0</text>
+<text x="820.0" y="202.0" font-size="16" fill="#1e1e1e" text-anchor="middle">60% weight</text>
+<text x="820.0" y="292.0" font-size="16" fill="#1e1e1e" text-anchor="middle">Strategy 1</text>
+<text x="820.0" y="312.0" font-size="16" fill="#1e1e1e" text-anchor="middle">40% weight</text>
+<text x="1036" y="110.0" font-size="18" fill="#862e9c" text-anchor="start">External DeFi</text>
+<text x="1130.0" y="174.0" font-size="16" fill="#1e1e1e" text-anchor="middle">Aave V3 Pool</text>
+<text x="1130.0" y="254.0" font-size="16" fill="#1e1e1e" text-anchor="middle">Uniswap V3</text>
+<text x="1130.0" y="334.0" font-size="16" fill="#1e1e1e" text-anchor="middle">Morpho</text>
+<text x="56" y="470.0" font-size="18" fill="#495057" text-anchor="start">Off-chain actors</text>
+<text x="471.0" y="523.0" font-size="15" fill="#1e1e1e" text-anchor="middle">Admin</text>
+<text x="471.0" y="541.75" font-size="15" fill="#1e1e1e" text-anchor="middle">(multisig / DAO)</text>
+<text x="471.0" y="603.0" font-size="15" fill="#1e1e1e" text-anchor="middle">Authority</text>
+<text x="471.0" y="621.75" font-size="15" fill="#1e1e1e" text-anchor="middle">(rebalancer / keeper)</text>
+<text x="821.0" y="523.0" font-size="15" fill="#1e1e1e" text-anchor="middle">Delegate 0</text>
+<text x="821.0" y="541.75" font-size="15" fill="#1e1e1e" text-anchor="middle">AI agent EOA</text>
+<text x="821.0" y="603.0" font-size="15" fill="#1e1e1e" text-anchor="middle">Delegate 1</text>
+<text x="821.0" y="621.75" font-size="15" fill="#1e1e1e" text-anchor="middle">AI agent EOA</text>
+<text x="230" y="143.0" font-size="13" fill="#1971c2" text-anchor="start">deposit assets</text>
+<text x="600" y="183.0" font-size="13" fill="#2f9e44" text-anchor="start">weighted push</text>
+<text x="935" y="158.0" font-size="13" fill="#e8590c" text-anchor="start">whitelisted calls</text>
+<text x="830" y="393.0" font-size="13" fill="#c92a2a" text-anchor="start">executeAction</text>
+<text x="480" y="423.0" font-size="13" fill="#495057" text-anchor="start">create / whitelist</text>
+<text x="40" y="674.0" font-size="14" fill="#1e1e1e" text-anchor="start">Invariants:</text>
+<text x="40" y="691.5" font-size="14" fill="#1e1e1e" text-anchor="start">• Solid arrows = on-chain token/value flow.  Dashed arrows = off-chain authorised calls.</text>
+<text x="40" y="709.0" font-size="14" fill="#1e1e1e" text-anchor="start">• Agent EOAs never hold user funds — only call executeAction on their own strategy.</text>
+<text x="40" y="726.5" font-size="14" fill="#1e1e1e" text-anchor="start">• Each strategy is an EIP-1167 clone with its own approvals; compromise is blast-radius-limited.</text>
+</svg>

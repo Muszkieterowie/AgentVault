@@ -1,0 +1,71 @@
+# ---------- Foundry ----------
+cache/
+out/
+!/broadcast
+/broadcast/*/31337/
+/broadcast/**/dry-run/
+
+# ---------- Env / secrets ----------
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# ---------- Node / pnpm / Next.js (frontend/) ----------
+node_modules/
+.pnp
+.pnp.*
+.yarn/cache
+.yarn/install-state.gz
+.yarn/build-state
+.yarn/unplugged
+.next/
+out-next/
+build/
+dist/
+.turbo/
+.vercel/
+.swc/
+
+# package-manager logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# coverage / tests
+coverage/
+*.lcov
+.nyc_output/
+lcov-report/
+
+# TypeScript build info
+*.tsbuildinfo
+next-env.d.ts
+
+# ---------- Python (helper scripts) ----------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# ---------- IDE / editors ----------
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+.idea/
+*.iml
+*.swp
+*.swo
+
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- Misc ----------
+*.log
+logs/
+tmp/
+.tmp/
