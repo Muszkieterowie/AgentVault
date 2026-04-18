@@ -27,7 +27,7 @@ export function Header() {
             >
               Dashboard
             </Link>
-            <Link
+            {/* <Link
               href="/admin"
               className={`text-sm ${
                 pathname === "/admin"
@@ -36,7 +36,7 @@ export function Header() {
               }`}
             >
               Admin
-            </Link>
+            </Link> */}
           </nav>
         </div>
         <div className="flex items-center gap-3">
