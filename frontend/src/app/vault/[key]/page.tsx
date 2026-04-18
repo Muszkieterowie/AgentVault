@@ -7,6 +7,7 @@ import {
   DepositForm,
   WithdrawForm,
   StrategyTable,
+  AllocationPie,
 } from "@/components";
 import { useVaultReads, useAssetInfo } from "@/hooks";
 import { VAULTS, type VaultKey } from "@/config/contracts";
@@ -87,24 +88,32 @@ export default function VaultPage({
       <div className="mb-8">
         <StatsStrip vaultAddress={vaultAddress} />
       </div>
-      {/* Forms */}
-      <div className=" mx-auto grid gap-6 md:grid-cols-2">
-        <DepositForm
+      {/* Forms + Allocation Pie */}
+      <div className="mx-auto grid gap-6 md:grid-cols-2">
+        <div className="flex flex-col gap-6">
+          <DepositForm
+            assetAddress={assetAddress}
+            assetDecimals={assetDecimals}
+            assetSymbol={assetSymbol}
+            vaultAddress={vaultAddress}
+            onSuccess={refetch}
+          />
+          <WithdrawForm
+            vaultDecimals={vaultDecimals}
+            assetDecimals={assetDecimals}
+            assetSymbol={assetSymbol}
+            userShares={userShares}
+            sharePrice={sharePrice}
+            vaultAddress={vaultAddress}
+            deadline={vaultConfig.deadline}
+            onSuccess={refetch}
+          />
+        </div>
+        <AllocationPie
+          strategyCount={strategyCount}
+          decimals={assetDecimals}
           assetAddress={assetAddress}
-          assetDecimals={assetDecimals}
-          assetSymbol={assetSymbol}
           vaultAddress={vaultAddress}
-          onSuccess={refetch}
-        />
-        <WithdrawForm
-          vaultDecimals={vaultDecimals}
-          assetDecimals={assetDecimals}
-          assetSymbol={assetSymbol}
-          userShares={userShares}
-          sharePrice={sharePrice}
-          vaultAddress={vaultAddress}
-          deadline={vaultConfig.deadline}
-          onSuccess={refetch}
         />
       </div>
 

@@ -1,25 +1,44 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { formatUnits } from "viem";
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+  type ChartOptions,
+} from "chart.js";
+import { Doughnut } from "react-chartjs-2";
 import { useStrategies, useIdleBalance } from "@/hooks";
+
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 interface Props {
   strategyCount: number;
   decimals: number;
   assetAddress?: `0x${string}`;
+  vaultAddress?: `0x${string}`;
+}
+
+interface Slice {
+  label: string;
+  value: number;
+  color: string;
 }
 
 export function AllocationPie({
   strategyCount,
   decimals,
   assetAddress,
+  vaultAddress,
 }: Props) {
-  const { strategies } = useStrategies(strategyCount);
-  const idle = useIdleBalance(assetAddress);
+  const { strategies } = useStrategies(strategyCount, vaultAddress);
+  const idle = useIdleBalance(assetAddress, vaultAddress);
+  const chartRef = useRef<ChartJS<"doughnut">>(null);
 
-  const slices = useMemo(() => {
-    const items: { label: string; value: number; color: string }[] = [];
+  const slices: Slice[] = useMemo(() => {
+    const items: Slice[] = [];
     const colors = [
       "#3b82f6",
       "#8b5cf6",
@@ -60,42 +79,103 @@ export function AllocationPie({
     );
   }
 
-  // Simple CSS-based pie using conic-gradient
-  let cumulative = 0;
-  const stops = slices
-    .map((s) => {
-      const start = cumulative;
-      cumulative += (s.value / total) * 360;
-      return `${s.color} ${start}deg ${cumulative}deg`;
-    })
-    .join(", ");
+  const data = {
+    labels: slices.map((s) => s.label),
+    datasets: [
+      {
+        data: slices.map((s) => s.value),
+        backgroundColor: slices.map((s) => s.color),
+        hoverBackgroundColor: slices.map((s) => s.color),
+        borderColor: "#18181b",
+        borderWidth: 2,
+        borderRadius: 6,
+        hoverOffset: 12,
+        spacing: 3,
+      },
+    ],
+  };
+
+  const options: ChartOptions<"doughnut"> = {
+    responsive: true,
+    maintainAspectRatio: true,
+    cutout: "55%",
+    animation: {
+      animateRotate: true,
+      animateScale: true,
+      duration: 800,
+      easing: "easeOutQuart",
+    },
+    plugins: {
+      legend: {
+        position: "bottom",
+        labels: {
+          color: "#d4d4d8",
+          padding: 16,
+          usePointStyle: true,
+          pointStyle: "circle",
+          font: { size: 13 },
+        },
+      },
+      tooltip: {
+        backgroundColor: "#27272a",
+        titleColor: "#e4e4e7",
+        bodyColor: "#a1a1aa",
+        borderColor: "#3f3f46",
+        borderWidth: 1,
+        cornerRadius: 8,
+        padding: 12,
+        callbacks: {
+          label(ctx) {
+            const val = ctx.parsed;
+            const pct = ((val / total) * 100).toFixed(1);
+            return ` ${val.toLocaleString(undefined, {
+              maximumFractionDigits: 2,
+            })} (${pct}%)`;
+          },
+        },
+      },
+    },
+  };
+
+  /* Center text plugin */
+  const centerTextPlugin = {
+    id: "centerText",
+    afterDraw(chart: ChartJS<"doughnut">) {
+      const { ctx, width, height } = chart;
+      ctx.save();
+      const centerX = width / 2;
+      const centerY = height / 2 - 16;
+
+      ctx.font = "500 12px ui-sans-serif, system-ui, sans-serif";
+      ctx.fillStyle = "#a1a1aa";
+      ctx.textAlign = "center" as CanvasTextAlign;
+      ctx.textBaseline = "middle" as CanvasTextBaseline;
+      ctx.fillText("Total", centerX, centerY);
+
+      ctx.font = "600 16px ui-sans-serif, system-ui, sans-serif";
+      ctx.fillStyle = "#e4e4e7";
+      ctx.fillText(
+        total.toLocaleString(undefined, { maximumFractionDigits: 2 }),
+        centerX,
+        centerY + 18
+      );
+      ctx.restore();
+    },
+  };
 
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
       <h3 className="mb-4 text-sm font-medium text-zinc-400 uppercase tracking-wide">
         Allocation
       </h3>
-      <div className="flex items-center gap-6">
-        <div
-          className="h-40 w-40 shrink-0 rounded-full"
-          style={{ background: `conic-gradient(${stops})` }}
-        />
-        <div className="flex flex-col gap-2">
-          {slices.map((s) => (
-            <div key={s.label} className="flex items-center gap-2 text-sm">
-              <div
-                className="h-3 w-3 rounded-full"
-                style={{ backgroundColor: s.color }}
-              />
-              <span className="text-zinc-300">{s.label}</span>
-              <span className="text-zinc-500">
-                {s.value.toLocaleString(undefined, {
-                  maximumFractionDigits: 2,
-                })}{" "}
-                ({((s.value / total) * 100).toFixed(1)}%)
-              </span>
-            </div>
-          ))}
+      <div className="flex items-center justify-center">
+        <div className="w-72">
+          <Doughnut
+            ref={chartRef}
+            data={data}
+            options={options}
+            plugins={[centerTextPlugin]}
+          />
         </div>
       </div>
     </div>
