@@ -20,8 +20,8 @@ import {
   ATOKEN_ADDRESS,
   DRIPPER_ADDRESS,
 } from "@/config/wagmi";
-import { useRoles, useStrategies, useAllowedActions, type StrategyInfo } from "@/hooks";
-import { encodeFunctionData, maxUint256, toFunctionSelector } from "viem";
+import { useRoles, useStrategies, useIdleBalance, useAllowedActions, type StrategyInfo } from "@/hooks";
+import { encodeFunctionData, formatUnits, maxUint256, toFunctionSelector } from "viem";
 
 // Aave V3 pool selectors. Computed from the ABI so they stay in sync.
 const SUPPLY_SELECTOR = toFunctionSelector(
@@ -87,6 +87,12 @@ export function AdminPanel({ strategyCount, assetDecimals }: AdminProps) {
     <div className="space-y-8">
       <YieldDripperCard />
       <CreateStrategySection isAdmin={isAdmin} onSuccess={refetch} />
+      <RebalanceToWeightsCard
+        strategies={strategies}
+        assetDecimals={assetDecimals}
+        isAuthority={isAuthority}
+        onSuccess={refetch}
+      />
       {strategies.map((s) => (
         <StrategyAdmin
           key={s.id}
@@ -97,6 +103,171 @@ export function AdminPanel({ strategyCount, assetDecimals }: AdminProps) {
           onSuccess={refetch}
         />
       ))}
+    </div>
+  );
+}
+
+/**
+ * Authority-only "Rebalance to weights" helper. Reads each active strategy's
+ * totalValue() + weight and the vault's idle balance, computes the target
+ * per strategy (NAV × weight ÷ 10_000), and fires vault.rebalance(id, Δ)
+ * for each off-target strategy. Pulls run first so idle is funded before
+ * pushes. Frontend-only: no contract change — just wraps existing
+ * rebalance() in a deterministic sequence.
+ */
+function RebalanceToWeightsCard({
+  strategies,
+  assetDecimals,
+  isAuthority,
+  onSuccess,
+}: {
+  strategies: StrategyInfo[];
+  assetDecimals: number;
+  isAuthority: boolean;
+  onSuccess: () => void;
+}) {
+  const idle = useIdleBalance(ASSET_ADDRESS);
+  const { writeContractAsync } = useWriteContract();
+  const [status, setStatus] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const active = strategies.filter((s) => s.active);
+  const nav =
+    active.reduce((acc, s) => acc + s.totalValue, 0n) + (idle ?? 0n);
+  const weightSum = active.reduce((acc, s) => acc + BigInt(s.weight), 0n);
+
+  // Pre-compute the deltas so the user sees them before signing anything.
+  const deltas = active.map((s) => {
+    const target = (nav * BigInt(s.weight)) / 10_000n;
+    return { id: s.id, current: s.totalValue, target, delta: target - s.totalValue };
+  });
+  const pulls = deltas.filter((d) => d.delta < 0n);
+  const pushes = deltas.filter((d) => d.delta > 0n);
+  // Residual (when Σweights < 10_000) is NAV minus everything the strategies
+  // should hold — it ends up idle by construction.
+  const residualAfter = nav - (nav * weightSum) / 10_000n;
+  const needsChange = pulls.length + pushes.length > 0;
+
+  const fmt = (raw: bigint) =>
+    Number(formatUnits(raw < 0n ? -raw : raw, assetDecimals)).toLocaleString(
+      undefined,
+      { maximumFractionDigits: 2 }
+    );
+
+  const run = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      // Pulls first: they fund the idle pool that subsequent pushes spend from.
+      for (const p of pulls) {
+        setStatus(`Pulling ${fmt(p.delta)} from strategy ${p.id}…`);
+        await writeContractAsync({
+          address: VAULT_ADDRESS,
+          abi: VaultABI,
+          functionName: "rebalance",
+          args: [BigInt(p.id), p.delta],
+        });
+      }
+      for (const p of pushes) {
+        setStatus(`Pushing ${fmt(p.delta)} into strategy ${p.id}…`);
+        await writeContractAsync({
+          address: VAULT_ADDRESS,
+          abi: VaultABI,
+          functionName: "rebalance",
+          args: [BigInt(p.id), p.delta],
+        });
+      }
+      setStatus("Rebalance complete");
+      onSuccess();
+    } catch (e) {
+      setError((e as Error).message.split("\n")[0]);
+      setStatus(null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-white">
+            Rebalance to weights
+          </h2>
+          <p className="mt-1 text-xs text-zinc-500">
+            Move funds between strategies so existing balances match the
+            configured weights. setStrategyWeight only changes future
+            deposit fan-out; this button catches existing balances up.
+          </p>
+        </div>
+        <button
+          disabled={!isAuthority || !needsChange || busy}
+          onClick={run}
+          className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-50"
+          title={
+            !isAuthority
+              ? "Requires AUTHORITY_ROLE"
+              : !needsChange
+                ? "Already aligned"
+                : undefined
+          }
+        >
+          {busy ? "Rebalancing…" : needsChange ? "Rebalance" : "Aligned"}
+        </button>
+      </div>
+
+      <div className="mt-2 rounded border border-zinc-800 bg-zinc-950/50 p-2 text-xs">
+        <div className="mb-1 text-[10px] uppercase tracking-wide text-zinc-500">
+          Planned moves (NAV {fmt(nav)})
+        </div>
+        {active.length === 0 ? (
+          <div className="text-zinc-600">No active strategies.</div>
+        ) : (
+          <ul className="space-y-1">
+            {deltas.map((d) => (
+              <li
+                key={d.id}
+                className="flex items-center justify-between font-mono text-zinc-400"
+              >
+                <span>
+                  #{d.id}:{" "}
+                  <span className="text-zinc-500">
+                    {fmt(d.current)} → {fmt(d.target)}
+                  </span>
+                </span>
+                <span
+                  className={
+                    d.delta === 0n
+                      ? "text-zinc-600"
+                      : d.delta < 0n
+                        ? "text-orange-400"
+                        : "text-emerald-400"
+                  }
+                >
+                  {d.delta === 0n
+                    ? "ok"
+                    : d.delta < 0n
+                      ? `pull ${fmt(d.delta)}`
+                      : `push ${fmt(d.delta)}`}
+                </span>
+              </li>
+            ))}
+            {residualAfter !== 0n && (
+              <li className="flex items-center justify-between pt-1 font-mono text-zinc-400">
+                <span>idle residual (Σweights &lt; 10 000)</span>
+                <span className="text-zinc-500">→ {fmt(residualAfter)}</span>
+              </li>
+            )}
+          </ul>
+        )}
+      </div>
+
+      {status && <p className="mt-2 text-xs text-zinc-400">{status}</p>}
+      {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+      {!isAuthority && (
+        <p className="mt-2 text-xs text-zinc-500">Requires AUTHORITY_ROLE</p>
+      )}
     </div>
   );
 }
