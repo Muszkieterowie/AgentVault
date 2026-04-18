@@ -1,6 +1,7 @@
 export { Header } from "./Header";
 export { StatsStrip } from "./StatsStrip";
 export { StrategyTable } from "./StrategyTable";
+export { VaultsTable } from "./VaultsTable";
 export { AllocationPie } from "./AllocationPie";
 export { ActivityFeed } from "./ActivityFeed";
 export { DepositForm } from "./DepositForm";

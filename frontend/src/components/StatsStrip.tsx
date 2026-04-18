@@ -3,7 +3,7 @@
 import { formatUnits } from "viem";
 import { useVaultReads, useAssetInfo } from "@/hooks";
 
-export function StatsStrip() {
+export function StatsStrip({ vaultAddress }: { vaultAddress?: `0x${string}` }) {
   const {
     totalAssets,
     vaultDecimals,
@@ -13,7 +13,7 @@ export function StatsStrip() {
     userAssetsValue,
     assetAddress,
     isLoading,
-  } = useVaultReads();
+  } = useVaultReads(vaultAddress);
   const { assetSymbol } = useAssetInfo(assetAddress);
 
   if (isLoading) {

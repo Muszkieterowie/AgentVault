@@ -15,6 +15,7 @@ interface Props {
   assetAddress?: `0x${string}`;
   assetDecimals: number;
   assetSymbol?: string;
+  vaultAddress?: `0x${string}`;
   onSuccess?: () => void;
 }
 
@@ -22,14 +23,16 @@ export function DepositForm({
   assetAddress,
   assetDecimals,
   assetSymbol,
+  vaultAddress,
   onSuccess,
 }: Props) {
+  const vault = vaultAddress ?? VAULT_ADDRESS;
   const { address } = useAccount();
   const [amount, setAmount] = useState("");
   const { allowance, refetchAllowance } = useAllowance(
     assetAddress,
     address,
-    VAULT_ADDRESS
+    vault
   );
   const balance = useUserAssetBalance(assetAddress, address);
 
@@ -52,7 +55,7 @@ export function DepositForm({
           address: assetAddress,
           abi: ERC20ABI,
           functionName: "approve",
-          args: [VAULT_ADDRESS, maxUint256],
+          args: [vault, maxUint256],
         },
         {
           onSuccess: () => {
@@ -64,7 +67,7 @@ export function DepositForm({
     } else {
       writeContract(
         {
-          address: VAULT_ADDRESS,
+          address: vault,
           abi: VaultABI,
           functionName: "deposit",
           args: [parsedAmount, address],

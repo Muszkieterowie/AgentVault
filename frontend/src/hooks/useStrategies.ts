@@ -12,7 +12,8 @@ export interface StrategyInfo {
     totalValue: bigint;
 }
 
-export function useStrategies(count: number) {
+export function useStrategies(count: number, vaultAddr?: `0x${string}`) {
+    const vault = vaultAddr ?? VAULT_ADDRESS;
     const indices = useMemo(
         () => Array.from({ length: count }, (_, i) => i),
         [count]
@@ -21,19 +22,19 @@ export function useStrategies(count: number) {
     const { data, isLoading, refetch } = useReadContracts({
         contracts: indices.flatMap((i) => [
             {
-                address: VAULT_ADDRESS,
+                address: vault,
                 abi: VaultABI,
                 functionName: "strategies" as const,
                 args: [BigInt(i)] as const,
             },
             {
-                address: VAULT_ADDRESS,
+                address: vault,
                 abi: VaultABI,
                 functionName: "strategyWeights" as const,
                 args: [BigInt(i)] as const,
             },
             {
-                address: VAULT_ADDRESS,
+                address: vault,
                 abi: VaultABI,
                 functionName: "strategyActive" as const,
                 args: [BigInt(i)] as const,
@@ -85,7 +86,8 @@ export function useStrategies(count: number) {
     return { strategies, isLoading, refetch };
 }
 
-export function useIdleBalance(assetAddress?: `0x${string}`) {
+export function useIdleBalance(assetAddress?: `0x${string}`, vaultAddr?: `0x${string}`) {
+    const vault = vaultAddr ?? VAULT_ADDRESS;
     const { data } = useReadContracts({
         contracts: assetAddress
             ? [
@@ -93,7 +95,7 @@ export function useIdleBalance(assetAddress?: `0x${string}`) {
                     address: assetAddress,
                     abi: ERC20ABI,
                     functionName: "balanceOf" as const,
-                    args: [VAULT_ADDRESS] as const,
+                    args: [vault] as const,
                 },
             ]
             : [],

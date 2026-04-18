@@ -4,24 +4,25 @@ import { VAULT_ADDRESS } from "@/config/wagmi";
 import { formatUnits } from "viem";
 import { useAccount } from "wagmi";
 
-export function useVaultReads() {
+export function useVaultReads(vaultAddr?: `0x${string}`) {
+    const vault = vaultAddr ?? VAULT_ADDRESS;
     const { address } = useAccount();
 
     const { data, isLoading, refetch } = useReadContracts({
         contracts: [
-            { address: VAULT_ADDRESS, abi: VaultABI, functionName: "totalAssets" },
-            { address: VAULT_ADDRESS, abi: VaultABI, functionName: "totalSupply" },
-            { address: VAULT_ADDRESS, abi: VaultABI, functionName: "asset" },
-            { address: VAULT_ADDRESS, abi: VaultABI, functionName: "decimals" },
-            { address: VAULT_ADDRESS, abi: VaultABI, functionName: "name" },
-            { address: VAULT_ADDRESS, abi: VaultABI, functionName: "symbol" },
-            { address: VAULT_ADDRESS, abi: VaultABI, functionName: "strategyCount" },
+            { address: vault, abi: VaultABI, functionName: "totalAssets" },
+            { address: vault, abi: VaultABI, functionName: "totalSupply" },
+            { address: vault, abi: VaultABI, functionName: "asset" },
+            { address: vault, abi: VaultABI, functionName: "decimals" },
+            { address: vault, abi: VaultABI, functionName: "name" },
+            { address: vault, abi: VaultABI, functionName: "symbol" },
+            { address: vault, abi: VaultABI, functionName: "strategyCount" },
         ] as const,
         query: { refetchInterval: 12_000 },
     });
 
     const { data: userSharesData } = useReadContract({
-        address: VAULT_ADDRESS,
+        address: vault,
         abi: VaultABI,
         functionName: "balanceOf",
         args: address ? [address] : undefined,

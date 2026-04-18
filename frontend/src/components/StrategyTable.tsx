@@ -2,14 +2,32 @@
 
 import { formatUnits } from "viem";
 import { useStrategies, type StrategyInfo } from "@/hooks";
+import { useState } from "react";
+import Link from "next/link";
 
 interface Props {
   strategyCount: number;
   decimals: number;
+  vaultAddress?: `0x${string}`;
+  hideNavigation?: boolean;
 }
 
-export function StrategyTable({ strategyCount, decimals }: Props) {
-  const { strategies, isLoading } = useStrategies(strategyCount);
+export function StrategyTable({
+  strategyCount,
+  decimals,
+  vaultAddress,
+  hideNavigation,
+}: Props) {
+  const { strategies, isLoading } = useStrategies(strategyCount, vaultAddress);
+  const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
+
+  console.log("strategies", strategies);
+
+  const copyAddress = async (address: string) => {
+    await navigator.clipboard.writeText(address);
+    setCopiedAddress(address);
+    setTimeout(() => setCopiedAddress(null), 2000);
+  };
 
   if (isLoading) {
     return <div className="animate-pulse rounded-xl bg-zinc-900 p-4 h-40" />;
@@ -37,12 +55,31 @@ export function StrategyTable({ strategyCount, decimals }: Props) {
         </thead>
         <tbody className="divide-y divide-zinc-800">
           {strategies.map((s) => (
-            <tr key={s.id} className="bg-zinc-950 hover:bg-zinc-900/50">
+            <tr
+              key={s.id}
+              className="bg-zinc-950 hover:bg-zinc-900/50 transition-colors"
+            >
               <td className="px-4 py-3 font-mono text-zinc-300">{s.id}</td>
-              <td className="px-4 py-3 font-mono text-xs text-zinc-400">
-                {s.address
-                  ? `${s.address.slice(0, 6)}...${s.address.slice(-4)}`
-                  : "—"}
+              <td className="px-4 py-3">
+                {s.address ? (
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs text-zinc-400">
+                      {s.address}
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        copyAddress(s.address!);
+                      }}
+                      className="rounded px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+                      title="Copy address"
+                    >
+                      {copiedAddress === s.address ? "✓" : "⧉"}
+                    </button>
+                  </div>
+                ) : (
+                  <span className="text-zinc-500">—</span>
+                )}
               </td>
               <td className="px-4 py-3 text-zinc-300">{s.weight.toString()}</td>
               <td className="px-4 py-3 text-zinc-300">

@@ -15,6 +15,7 @@ interface Props {
   assetSymbol?: string;
   userShares?: bigint;
   sharePrice: number;
+  vaultAddress?: `0x${string}`;
   onSuccess?: () => void;
 }
 
@@ -23,8 +24,10 @@ export function WithdrawForm({
   assetSymbol,
   userShares,
   sharePrice,
+  vaultAddress,
   onSuccess,
 }: Props) {
+  const vault = vaultAddress ?? VAULT_ADDRESS;
   const { address } = useAccount();
   const [amount, setAmount] = useState("");
 
@@ -41,7 +44,7 @@ export function WithdrawForm({
 
     writeContract(
       {
-        address: VAULT_ADDRESS,
+        address: vault,
         abi: VaultABI,
         functionName: "withdraw",
         args: [parsedAmount, address, address],
