@@ -6,11 +6,11 @@ strategies; an authority can manually rebalance.
 
 ## Contract surface this UI binds to
 
-| Contract | Path | Key functions the UI calls |
-| --- | --- | --- |
-| `Vault` (ERC-4626) | [src/Vault.sol](src/Vault.sol) | `deposit`, `mint`, `withdraw`, `redeem`, `createStrategy`, `setStrategyWeight`, `deactivateStrategy`, `rebalance`, `setAuthority`, `totalAssets`, `strategies`, `strategyWeights`, `strategyActive`, `strategyCount` |
-| `Strategy` (clone) | [src/Strategy.sol](src/Strategy.sol) | `setDelegate`, `addAllowedAction`, `removeAllowedAction`, `setDepositConfig`, `setWithdrawConfig`, `removeDepositConfig`, `removeWithdrawConfig`, `addValueSource`, `removeValueSource`, `totalValue`, `depositConfig`, `withdrawConfig`, `valueSources` |
-| `AaveV3LoopValue` | [src/valueSources/AaveV3LoopValue.sol](src/valueSources/AaveV3LoopValue.sol) | `valueOf(strategy)` — registered as a strategy value source |
+| Contract           | Path                                                                         | Key functions the UI calls                                                                                                                                                                                                                               |
+| ------------------ | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Vault` (ERC-4626) | [src/Vault.sol](src/Vault.sol)                                               | `deposit`, `mint`, `withdraw`, `redeem`, `createStrategy`, `setStrategyWeight`, `deactivateStrategy`, `rebalance`, `setAuthority`, `totalAssets`, `strategies`, `strategyWeights`, `strategyActive`, `strategyCount`                                     |
+| `Strategy` (clone) | [src/Strategy.sol](src/Strategy.sol)                                         | `setDelegate`, `addAllowedAction`, `removeAllowedAction`, `setDepositConfig`, `setWithdrawConfig`, `removeDepositConfig`, `removeWithdrawConfig`, `addValueSource`, `removeValueSource`, `totalValue`, `depositConfig`, `withdrawConfig`, `valueSources` |
+| `AaveV3LoopValue`  | [src/valueSources/AaveV3LoopValue.sol](src/valueSources/AaveV3LoopValue.sol) | `valueOf(strategy)` — registered as a strategy value source                                                                                                                                                                                              |
 
 Roles (OZ AccessControl, queried via `hasRole`):
 
@@ -21,7 +21,7 @@ Roles (OZ AccessControl, queried via `hasRole`):
 
 - Next.js 14 (App Router) + TypeScript
 - wagmi v2 + viem + RainbowKit
-- Tailwind + shadcn-style primitives
+- Material UI + shadcn-style primitives
 - ABIs imported from Foundry `out/`
 
 ## Pages
