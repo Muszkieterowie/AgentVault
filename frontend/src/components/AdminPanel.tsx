@@ -1,19 +1,76 @@
 "use client";
 
 import { useState } from "react";
-import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { VaultABI, StrategyABI } from "@/abi";
-import { VAULT_ADDRESS } from "@/config/wagmi";
+import {
+  useWriteContract,
+  useWaitForTransactionReceipt,
+  useReadContract,
+} from "wagmi";
+import {
+  VaultABI,
+  StrategyABI,
+  ERC20ABI,
+  YieldDripperABI,
+  MockAavePoolABI,
+} from "@/abi";
+import {
+  VAULT_ADDRESS,
+  ASSET_ADDRESS,
+  POOL_ADDRESS,
+  ATOKEN_ADDRESS,
+  DRIPPER_ADDRESS,
+} from "@/config/wagmi";
 import { useRoles, useStrategies, type StrategyInfo } from "@/hooks";
-import { encodeFunctionData, parseAbi } from "viem";
+import { encodeFunctionData, maxUint256, toFunctionSelector } from "viem";
 
-// Aave V3 function selectors
-const AAVE_PRESETS = [
-  { label: "supply", selector: "0x617ba037" as `0x${string}` },
-  { label: "withdraw", selector: "0x69328dec" as `0x${string}` },
-  { label: "borrow", selector: "0xa415bcad" as `0x${string}` },
-  { label: "repay", selector: "0x573ade81" as `0x${string}` },
-];
+// Aave V3 pool selectors. Computed from the ABI so they stay in sync.
+const SUPPLY_SELECTOR = toFunctionSelector(
+  "supply(address,uint256,address,uint16)"
+);
+const WITHDRAW_SELECTOR = toFunctionSelector(
+  "withdraw(address,uint256,address)"
+);
+
+// Calldata offsets for MockAavePool.supply(address,uint256,address,uint16):
+//   [0..4)    selector
+//   [4..36)   asset
+//   [36..68)  amount
+//   [68..100) onBehalfOf   → recipientOffset = 68
+const SUPPLY_RECIPIENT_OFFSET = 68;
+
+// For MockAavePool.withdraw(address,uint256,address):
+//   [0..4)    selector
+//   [4..36)   asset
+//   [36..68)  amount       → amountOffset = 36
+//   [68..100) to
+const WITHDRAW_AMOUNT_OFFSET = 36;
+
+const ACTION_PRESETS = [
+  {
+    label: "Aave V3: supply",
+    target: POOL_ADDRESS,
+    selector: SUPPLY_SELECTOR,
+    recipientOffset: SUPPLY_RECIPIENT_OFFSET,
+  },
+  {
+    label: "Aave V3: withdraw",
+    target: POOL_ADDRESS,
+    selector: WITHDRAW_SELECTOR,
+    recipientOffset: 68,
+  },
+  {
+    label: "Aave V3: borrow",
+    target: POOL_ADDRESS,
+    selector: "0xa415bcad" as `0x${string}`,
+    recipientOffset: 0,
+  },
+  {
+    label: "Aave V3: repay",
+    target: POOL_ADDRESS,
+    selector: "0x573ade81" as `0x${string}`,
+    recipientOffset: 0,
+  },
+] as const;
 
 interface AdminProps {
   strategyCount: number;
@@ -26,6 +83,7 @@ export function AdminPanel({ strategyCount, decimals }: AdminProps) {
 
   return (
     <div className="space-y-8">
+      <YieldDripperCard />
       <CreateStrategySection isAdmin={isAdmin} onSuccess={refetch} />
       {strategies.map((s) => (
         <StrategyAdmin
@@ -37,6 +95,73 @@ export function AdminPanel({ strategyCount, decimals }: AdminProps) {
           onSuccess={refetch}
         />
       ))}
+    </div>
+  );
+}
+
+function YieldDripperCard() {
+  const { writeContract, isPending, data: txHash } = useWriteContract();
+  const { isLoading: isConfirming } = useWaitForTransactionReceipt({
+    hash: txHash,
+  });
+
+  const { data: isReady, refetch: refetchReady } = useReadContract({
+    address: DRIPPER_ADDRESS,
+    abi: YieldDripperABI,
+    functionName: "isReady",
+    query: { refetchInterval: 10_000 },
+  });
+  const { data: waitSec } = useReadContract({
+    address: DRIPPER_ADDRESS,
+    abi: YieldDripperABI,
+    functionName: "timeUntilReady",
+    query: { refetchInterval: 10_000 },
+  });
+
+  const secs = typeof waitSec === "bigint" ? Number(waitSec) : undefined;
+  const label = isReady
+    ? "Ready"
+    : secs !== undefined
+      ? `Ready in ${Math.floor(secs / 60)}m ${secs % 60}s`
+      : "—";
+
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-white">Yield Dripper</h2>
+          <p className="mt-1 text-xs text-zinc-500">
+            Mints demo-USDC yield into the aToken reserve on demand. Anyone can
+            call when ready.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span
+            className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${isReady
+              ? "bg-green-900/50 text-green-300 ring-1 ring-green-800"
+              : "bg-zinc-800 text-zinc-400"
+              }`}
+          >
+            {label}
+          </span>
+          <button
+            disabled={!isReady || isPending || isConfirming}
+            onClick={() =>
+              writeContract(
+                {
+                  address: DRIPPER_ADDRESS,
+                  abi: YieldDripperABI,
+                  functionName: "drip",
+                },
+                { onSuccess: () => refetchReady() }
+              )
+            }
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isPending || isConfirming ? "Dripping…" : "Drip"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -141,6 +266,14 @@ function StrategyAdmin({
           onSuccess={onSuccess}
         />
         <DelegateEditor strategyAddress={strategy.address} isAdmin={isAdmin} />
+        <TrustedSpenderEditor
+          strategyAddress={strategy.address}
+          isAdmin={isAdmin}
+        />
+        <ApproveTokenEditor
+          strategyAddress={strategy.address}
+          isAdmin={isAdmin}
+        />
         <AllowedActionEditor
           strategyAddress={strategy.address}
           isAdmin={isAdmin}
@@ -173,7 +306,7 @@ function WeightEditor({
   onSuccess,
 }: {
   strategyId: number;
-  currentWeight: bigint;
+  currentWeight: number;
   isAdmin: boolean;
   onSuccess: () => void;
 }) {
@@ -206,7 +339,7 @@ function WeightEditor({
                 address: VAULT_ADDRESS,
                 abi: VaultABI,
                 functionName: "setStrategyWeight",
-                args: [BigInt(strategyId), BigInt(weight)],
+                args: [BigInt(strategyId), Number(weight)],
               },
               { onSuccess }
             )
@@ -262,6 +395,120 @@ function DelegateEditor({
   );
 }
 
+function TrustedSpenderEditor({
+  strategyAddress,
+  isAdmin,
+}: {
+  strategyAddress: `0x${string}`;
+  isAdmin: boolean;
+}) {
+  const [spender, setSpender] = useState(POOL_ADDRESS);
+  const { writeContract, isPending } = useWriteContract();
+
+  const call = (trusted: boolean) =>
+    writeContract({
+      address: strategyAddress,
+      abi: StrategyABI,
+      functionName: "setTrustedSpender",
+      args: [spender as `0x${string}`, trusted],
+    });
+
+  return (
+    <div className="space-y-2">
+      <label className="block text-xs font-medium text-zinc-400">
+        Trusted Spenders
+      </label>
+      <input
+        type="text"
+        value={spender}
+        onChange={(e) => setSpender(e.target.value as `0x${string}`)}
+        placeholder="Spender (0x…)"
+        className="w-full rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-white placeholder-zinc-600 focus:border-blue-500 focus:outline-none"
+      />
+      <div className="flex gap-2">
+        <button
+          disabled={!isAdmin || !spender || isPending}
+          onClick={() => call(true)}
+          className="rounded bg-green-700 px-3 py-1 text-xs text-white hover:bg-green-600 disabled:opacity-50"
+        >
+          Trust
+        </button>
+        <button
+          disabled={!isAdmin || !spender || isPending}
+          onClick={() => call(false)}
+          className="rounded bg-red-700 px-3 py-1 text-xs text-white hover:bg-red-600 disabled:opacity-50"
+        >
+          Revoke
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ApproveTokenEditor({
+  strategyAddress,
+  isAdmin,
+}: {
+  strategyAddress: `0x${string}`;
+  isAdmin: boolean;
+}) {
+  const [token, setToken] = useState<`0x${string}`>(ASSET_ADDRESS);
+  const [spender, setSpender] = useState<`0x${string}`>(POOL_ADDRESS);
+  const { writeContract, isPending } = useWriteContract();
+
+  return (
+    <div className="space-y-2">
+      <label className="block text-xs font-medium text-zinc-400">
+        Approve Token (strategy → spender)
+      </label>
+      <input
+        type="text"
+        value={token}
+        onChange={(e) => setToken(e.target.value as `0x${string}`)}
+        placeholder="Token (0x…)"
+        className="w-full rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-white placeholder-zinc-600 focus:border-blue-500 focus:outline-none"
+      />
+      <input
+        type="text"
+        value={spender}
+        onChange={(e) => setSpender(e.target.value as `0x${string}`)}
+        placeholder="Spender (0x…)"
+        className="w-full rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-white placeholder-zinc-600 focus:border-blue-500 focus:outline-none"
+      />
+      <div className="flex gap-2">
+        <button
+          disabled={!isAdmin || isPending}
+          onClick={() =>
+            writeContract({
+              address: strategyAddress,
+              abi: StrategyABI,
+              functionName: "approveToken",
+              args: [token, spender, maxUint256],
+            })
+          }
+          className="rounded bg-blue-700 px-3 py-1 text-xs text-white hover:bg-blue-600 disabled:opacity-50"
+        >
+          Approve max
+        </button>
+        <button
+          disabled={!isAdmin || isPending}
+          onClick={() =>
+            writeContract({
+              address: strategyAddress,
+              abi: StrategyABI,
+              functionName: "approveToken",
+              args: [token, spender, 0n],
+            })
+          }
+          className="rounded bg-zinc-700 px-3 py-1 text-xs text-white hover:bg-zinc-600 disabled:opacity-50"
+        >
+          Revoke
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function AllowedActionEditor({
   strategyAddress,
   isAdmin,
@@ -269,10 +516,16 @@ function AllowedActionEditor({
   strategyAddress: `0x${string}`;
   isAdmin: boolean;
 }) {
-  const [target, setTarget] = useState("");
-  const [selector, setSelector] = useState("");
+  const [target, setTarget] = useState<string>("");
+  const [selector, setSelector] = useState<string>("");
   const [recipientOffset, setRecipientOffset] = useState("0");
   const { writeContract, isPending } = useWriteContract();
+
+  const applyPreset = (p: (typeof ACTION_PRESETS)[number]) => {
+    setTarget(p.target);
+    setSelector(p.selector);
+    setRecipientOffset(String(p.recipientOffset));
+  };
 
   return (
     <div className="space-y-2">
@@ -280,16 +533,15 @@ function AllowedActionEditor({
         Whitelist Actions
       </label>
       <div className="flex flex-wrap gap-1">
-        {AAVE_PRESETS.map((p) => (
+        {ACTION_PRESETS.map((p) => (
           <button
             key={p.label}
             type="button"
-            onClick={() => setSelector(p.selector)}
-            className={`rounded px-2 py-0.5 text-xs ${
-              selector === p.selector
-                ? "bg-blue-600 text-white"
-                : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
-            }`}
+            onClick={() => applyPreset(p)}
+            className={`rounded px-2 py-0.5 text-xs ${selector === p.selector && target === p.target
+              ? "bg-blue-600 text-white"
+              : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+              }`}
           >
             {p.label}
           </button>
@@ -315,7 +567,7 @@ function AllowedActionEditor({
           value={recipientOffset}
           onChange={(e) => setRecipientOffset(e.target.value)}
           placeholder="recipientOffset"
-          className="w-20 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-white placeholder-zinc-600 focus:border-blue-500 focus:outline-none"
+          className="w-24 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-white placeholder-zinc-600 focus:border-blue-500 focus:outline-none"
         />
       </div>
       <div className="flex gap-2">
@@ -329,7 +581,7 @@ function AllowedActionEditor({
               args: [
                 target as `0x${string}`,
                 selector as `0x${string}`,
-                BigInt(recipientOffset || "0"),
+                Number(recipientOffset || "0"),
               ],
             })
           }
@@ -363,15 +615,59 @@ function ConfigEditor({
   strategyAddress: `0x${string}`;
   isAdmin: boolean;
 }) {
-  const [configTarget, setConfigTarget] = useState("");
+  const [configTarget, setConfigTarget] = useState<string>(POOL_ADDRESS);
   const [configData, setConfigData] = useState("");
+  const [amountOffset, setAmountOffset] = useState(
+    String(WITHDRAW_AMOUNT_OFFSET)
+  );
   const { writeContract, isPending } = useWriteContract();
+
+  // Preset: Aave withdraw(asset, 0, strategy). The vault rewrites the
+  // amount field at amountOffset=36 before executing.
+  const applyAaveWithdrawPreset = () => {
+    const data = encodeFunctionData({
+      abi: MockAavePoolABI,
+      functionName: "withdraw",
+      args: [ASSET_ADDRESS, 0n, strategyAddress],
+    });
+    setConfigTarget(POOL_ADDRESS);
+    setConfigData(data);
+    setAmountOffset(String(WITHDRAW_AMOUNT_OFFSET));
+  };
+
+  // Preset: Aave supply(asset, 0, strategy, 0). amountOffset=36.
+  const applyAaveSupplyPreset = () => {
+    const data = encodeFunctionData({
+      abi: MockAavePoolABI,
+      functionName: "supply",
+      args: [ASSET_ADDRESS, 0n, strategyAddress, 0],
+    });
+    setConfigTarget(POOL_ADDRESS);
+    setConfigData(data);
+    setAmountOffset("36");
+  };
 
   return (
     <div className="space-y-2">
       <label className="block text-xs font-medium text-zinc-400">
         Deposit / Withdraw Config
       </label>
+      <div className="flex flex-wrap gap-1">
+        <button
+          type="button"
+          onClick={applyAaveSupplyPreset}
+          className="rounded bg-zinc-800 px-2 py-0.5 text-xs text-zinc-400 hover:bg-zinc-700"
+        >
+          Preset: Aave supply
+        </button>
+        <button
+          type="button"
+          onClick={applyAaveWithdrawPreset}
+          className="rounded bg-zinc-800 px-2 py-0.5 text-xs text-zinc-400 hover:bg-zinc-700"
+        >
+          Preset: Aave withdraw
+        </button>
+      </div>
       <input
         type="text"
         value={configTarget}
@@ -386,9 +682,21 @@ function ConfigEditor({
         placeholder="Calldata (0x…)"
         className="w-full rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-white placeholder-zinc-600 focus:border-blue-500 focus:outline-none"
       />
+      <div className="flex gap-2">
+        <input
+          type="number"
+          value={amountOffset}
+          onChange={(e) => setAmountOffset(e.target.value)}
+          placeholder="amountOffset"
+          className="w-28 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-white placeholder-zinc-600 focus:border-blue-500 focus:outline-none"
+        />
+        <span className="flex-1 self-center text-xs text-zinc-600">
+          byte offset of the amount word in calldata
+        </span>
+      </div>
       <div className="flex flex-wrap gap-2">
         <button
-          disabled={!isAdmin || !configTarget || isPending}
+          disabled={!isAdmin || !configTarget || !configData || isPending}
           onClick={() =>
             writeContract({
               address: strategyAddress,
@@ -396,7 +704,8 @@ function ConfigEditor({
               functionName: "setDepositConfig",
               args: [
                 configTarget as `0x${string}`,
-                (configData || "0x") as `0x${string}`,
+                configData as `0x${string}`,
+                Number(amountOffset || "0"),
               ],
             })
           }
@@ -405,7 +714,7 @@ function ConfigEditor({
           Set Deposit
         </button>
         <button
-          disabled={!isAdmin || !configTarget || isPending}
+          disabled={!isAdmin || !configTarget || !configData || isPending}
           onClick={() =>
             writeContract({
               address: strategyAddress,
@@ -413,7 +722,8 @@ function ConfigEditor({
               functionName: "setWithdrawConfig",
               args: [
                 configTarget as `0x${string}`,
-                (configData || "0x") as `0x${string}`,
+                configData as `0x${string}`,
+                Number(amountOffset || "0"),
               ],
             })
           }
@@ -459,16 +769,36 @@ function ValueSourceEditor({
   strategyAddress: `0x${string}`;
   isAdmin: boolean;
 }) {
-  const [vsTarget, setVsTarget] = useState("");
+  const [vsTarget, setVsTarget] = useState<string>(ATOKEN_ADDRESS);
   const [vsData, setVsData] = useState("");
   const [removeIndex, setRemoveIndex] = useState("");
   const { writeContract, isPending } = useWriteContract();
+
+  // Preset: aToken.balanceOf(strategy) — reads protocol receipt balance.
+  const applyATokenBalancePreset = () => {
+    const data = encodeFunctionData({
+      abi: ERC20ABI,
+      functionName: "balanceOf",
+      args: [strategyAddress],
+    });
+    setVsTarget(ATOKEN_ADDRESS);
+    setVsData(data);
+  };
 
   return (
     <div className="space-y-2">
       <label className="block text-xs font-medium text-zinc-400">
         Value Sources
       </label>
+      <div className="flex flex-wrap gap-1">
+        <button
+          type="button"
+          onClick={applyATokenBalancePreset}
+          className="rounded bg-zinc-800 px-2 py-0.5 text-xs text-zinc-400 hover:bg-zinc-700"
+        >
+          Preset: aToken balanceOf(strategy)
+        </button>
+      </div>
       <input
         type="text"
         value={vsTarget}
@@ -485,16 +815,13 @@ function ValueSourceEditor({
       />
       <div className="flex gap-2">
         <button
-          disabled={!isAdmin || !vsTarget || isPending}
+          disabled={!isAdmin || !vsTarget || !vsData || isPending}
           onClick={() =>
             writeContract({
               address: strategyAddress,
               abi: StrategyABI,
               functionName: "addValueSource",
-              args: [
-                vsTarget as `0x${string}`,
-                (vsData || "0x") as `0x${string}`,
-              ],
+              args: [vsTarget as `0x${string}`, vsData as `0x${string}`],
             })
           }
           className="rounded bg-green-700 px-3 py-1 text-xs text-white hover:bg-green-600 disabled:opacity-50"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActivityFeed, type ActivityRow } from "@/hooks";
+import { useActivityFeed } from "@/hooks";
 
 interface Props {
   strategyAddresses: `0x${string}`[];
@@ -24,32 +24,38 @@ export function ActivityFeed({ strategyAddresses }: Props) {
           No recent events
         </p>
       ) : (
-        <div className="max-h-72 overflow-y-auto">
+        <div className="max-h-80 overflow-y-auto">
           <table className="w-full text-left text-xs">
             <thead className="sticky top-0 bg-zinc-900 text-zinc-500 uppercase">
               <tr>
                 <th className="px-4 py-2">Event</th>
-                <th className="px-4 py-2">Contract</th>
+                <th className="px-4 py-2">Details</th>
                 <th className="px-4 py-2">Block</th>
                 <th className="px-4 py-2">Tx</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800/50">
-              {rows.map((r, i) => (
+              {rows.map((r) => (
                 <tr
                   key={`${r.transactionHash}-${r.logIndex}`}
                   className="hover:bg-zinc-900/50"
                 >
-                  <td className="px-4 py-2 text-zinc-300">{r.eventName}</td>
-                  <td className="px-4 py-2 font-mono text-zinc-500">
-                    {r.contractAddress.slice(0, 6)}...
-                    {r.contractAddress.slice(-4)}
+                  <td className="px-4 py-2 font-medium text-zinc-300 whitespace-nowrap">
+                    {r.eventName}
                   </td>
-                  <td className="px-4 py-2 text-zinc-500">
+                  <td className="px-4 py-2 text-zinc-400">{r.summary}</td>
+                  <td className="px-4 py-2 text-zinc-500 whitespace-nowrap">
                     {r.blockNumber.toString()}
                   </td>
-                  <td className="px-4 py-2 font-mono text-zinc-500">
-                    {r.transactionHash.slice(0, 8)}...
+                  <td className="px-4 py-2 font-mono text-zinc-500 whitespace-nowrap">
+                    <a
+                      href={`https://sepolia.basescan.org/tx/${r.transactionHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-blue-400"
+                    >
+                      {r.transactionHash.slice(0, 8)}…
+                    </a>
                   </td>
                 </tr>
               ))}

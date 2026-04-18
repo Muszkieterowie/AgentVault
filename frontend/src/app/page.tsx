@@ -20,7 +20,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 w-full">
       <h1 className="text-4xl font-bold text-center mt-8 mb-4">Vaults</h1>
-      {/* <StatsStrip /> */}
+      <StatsStrip />
       <div className="space-y-6 w-full">
         <StrategyTable strategyCount={strategyCount} decimals={vaultDecimals} />
         <AllocationPie

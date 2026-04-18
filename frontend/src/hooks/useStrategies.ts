@@ -6,7 +6,8 @@ import { useMemo } from "react";
 export interface StrategyInfo {
     id: number;
     address: `0x${string}`;
-    weight: bigint;
+    /** Strategy weight in basis points (0–10_000). uint16 on-chain. */
+    weight: number;
     active: boolean;
     totalValue: bigint;
 }
@@ -65,7 +66,8 @@ export function useStrategies(count: number) {
         if (!data) return [];
         return indices.map((i) => {
             const addr = data[i * 3]?.result as `0x${string}`;
-            const weight = data[i * 3 + 1]?.result as bigint;
+            const weightRaw = data[i * 3 + 1]?.result;
+            const weight = Number(weightRaw ?? 0);
             const active = data[i * 3 + 2]?.result as boolean;
 
             const valueIdx = strategyAddresses
@@ -76,7 +78,7 @@ export function useStrategies(count: number) {
                     ? ((valueData?.[valueIdx]?.result as bigint) ?? 0n)
                     : 0n;
 
-            return { id: i, address: addr, weight: weight ?? 0n, active: !!active, totalValue };
+            return { id: i, address: addr, weight, active: !!active, totalValue };
         });
     }, [data, valueData, indices, strategyAddresses]);
 
