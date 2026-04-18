@@ -7,6 +7,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 import {IStrategy} from "./interfaces/IStrategy.sol";
+import {IVault} from "./interfaces/IVault.sol";
 
 /// @title  Strategy — a single AgentVault strategy contract.
 /// @notice One Strategy instance per strategy in the vault. Holds its own
@@ -110,6 +111,17 @@ contract Strategy is IStrategy, ReentrancyGuard {
     ///      run after {initialize} has been called on this clone.
     modifier onlyInitialized() {
         if (!initialized) revert NotInitialized();
+        _;
+    }
+
+    /// @dev Reverts once the parent Vault has reached its target-date
+    ///      deadline. Applied to agent-driven paths (executeAction,
+    ///      approveToken) so the AI agent cannot steer the strategy into
+    ///      new positions after the fund has matured — post-maturity the
+    ///      only legitimate movement is authority {rebalance} + user redeem.
+    modifier onlyPreMaturity() {
+        uint256 dl = IVault(vault).DEADLINE();
+        if (block.timestamp >= dl) revert VaultMatured(dl);
         _;
     }
 
@@ -278,7 +290,7 @@ contract Strategy is IStrategy, ReentrancyGuard {
     ///      protocol the admin has pre-vetted.
     ///      `forceApprove` handles non-standard tokens (USDT) that reject
     ///      allowance changes from a non-zero value.
-    function approveToken(address token, address spender, uint256 amount) external onlyAdminOrDelegate {
+    function approveToken(address token, address spender, uint256 amount) external onlyAdminOrDelegate onlyPreMaturity {
         if (token == address(0) || spender == address(0)) revert ZeroAddress();
         if (spender == address(this)) revert TargetIsSelf();
         if (spender == vault) revert TargetIsVault();
@@ -371,7 +383,7 @@ contract Strategy is IStrategy, ReentrancyGuard {
     function executeAction(
         address target,
         bytes calldata data
-    ) external onlyDelegateOrAuthority nonReentrant returns (bytes memory result) {
+    ) external onlyDelegateOrAuthority onlyPreMaturity nonReentrant returns (bytes memory result) {
         if (data.length < 4) revert DataTooShort(data.length);
 
         bytes4 selector = bytes4(data[0:4]);

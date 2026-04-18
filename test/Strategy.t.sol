@@ -69,7 +69,12 @@ contract StrategyTest is Test {
 
     function setUp() public {
         asset = new MockERC20();
-        vault = new Vault(IERC20(address(asset)), admin, authority, "AgentVault USDC", "avUSDC");
+        vault = new Vault(
+            IERC20(address(asset)),
+            admin, authority,
+            "AgentVault USDC", "avUSDC",
+            block.timestamp + 365 days
+        );
         target = new MockTarget(IERC20(address(asset)));
 
         vm.prank(admin);

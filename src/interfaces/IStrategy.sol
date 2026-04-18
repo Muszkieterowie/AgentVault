@@ -62,6 +62,9 @@ interface IStrategy {
     error AutoWithdrawFailed(bytes returnData);
     error NotAdminNorDelegate(address caller);
     error SpenderNotTrusted(address spender);
+    /// @dev Agent-driven paths (executeAction, approveToken) revert once
+    ///      the parent Vault has reached its target-date deadline.
+    error VaultMatured(uint256 deadline);
 
     // ─────────────────────────────────────────────────────────────────────────
     // Events

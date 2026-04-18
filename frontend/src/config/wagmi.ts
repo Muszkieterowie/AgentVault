@@ -1,11 +1,20 @@
-import { http } from "wagmi";
+import { createConfig, http } from "wagmi";
 import { baseSepolia } from "wagmi/chains";
-import { getDefaultConfig } from "@rainbow-me/rainbowkit";
+import { connectorsForWallets } from "@rainbow-me/rainbowkit";
+import { injectedWallet } from "@rainbow-me/rainbowkit/wallets";
 import { ADDRESSES, CHAIN_ID } from "./contracts";
 
-export const config = getDefaultConfig({
-    appName: "AgentVault",
-    projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "placeholder",
+// Injected-only (MetaMask, Rabby, etc.) — no WalletConnect relay needed, so
+// no project id required. The `projectId` field below is a placeholder that
+// RainbowKit's wallet registry wants, but it is never used because we don't
+// include any WC-backed wallet in the list.
+const connectors = connectorsForWallets(
+    [{ groupName: "Recommended", wallets: [injectedWallet] }],
+    { appName: "AgentVault", projectId: "unused" }
+);
+
+export const config = createConfig({
+    connectors,
     chains: [baseSepolia],
     transports: {
         [baseSepolia.id]: http(`/api/rpc/${CHAIN_ID}`),
@@ -13,9 +22,6 @@ export const config = getDefaultConfig({
     ssr: true,
 });
 
-// Deployed address aliases, re-exported so existing hooks/components keep
-// importing from @/config/wagmi. Override at runtime via NEXT_PUBLIC_VAULT_ADDRESS
-// if you redeploy to a different address without regenerating contracts.ts.
 export const VAULT_ADDRESS = (process.env.NEXT_PUBLIC_VAULT_ADDRESS ||
     ADDRESSES.vault) as `0x${string}`;
 export const ASSET_ADDRESS = ADDRESSES.asset as `0x${string}`;

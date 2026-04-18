@@ -43,13 +43,20 @@ contract DeployBaseSepolia is Script {
         vm.startBroadcast(deployerKey);
 
         // ── Core asset + vault ─────────────────────────────────────────────
+        // Target-date deadline: 30 days out so the demo can comfortably
+        // exercise deposit → yield drip → (warp or wait) → redeem within a
+        // testnet session. Override via `VAULT_DEADLINE` env var if needed.
+        uint256 deadline = _deadlineFromEnvOrDefault(block.timestamp + 30 days);
+        console2.log("Vault deadline (unix):  ", deadline);
+
         DemoUSDC asset = new DemoUSDC();
         Vault vault = new Vault(
             IERC20(address(asset)),
             deployer,           // admin
             deployer,           // authority
             "AgentVault Demo USDC",
-            "avDemoUSDC"
+            "avDemoUSDC",
+            deadline
         );
 
         // ── Aave V3 mock stack ─────────────────────────────────────────────
@@ -112,5 +119,11 @@ contract DeployBaseSepolia is Script {
         console2.log("MockAToken:             ", address(aToken));
         console2.log("MockVariableDebtToken:  ", address(debtToken));
         console2.log("YieldDripper:           ", address(dripper));
+    }
+
+    /// @dev Read an optional `VAULT_DEADLINE` env var; default if unset.
+    function _deadlineFromEnvOrDefault(uint256 fallback_) internal view returns (uint256) {
+        try vm.envUint("VAULT_DEADLINE") returns (uint256 v) { return v; }
+        catch { return fallback_; }
     }
 }

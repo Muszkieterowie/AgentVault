@@ -7,6 +7,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {Vault} from "../src/Vault.sol";
 import {Strategy} from "../src/Strategy.sol";
+import {IVault} from "../src/interfaces/IVault.sol";
+import {IStrategy} from "../src/interfaces/IStrategy.sol";
 import {MockAavePool} from "../src/mocks/MockAavePool.sol";
 import {MockAToken} from "../src/mocks/MockAToken.sol";
 import {MockVariableDebtToken} from "../src/mocks/MockVariableDebtToken.sol";
@@ -59,10 +61,21 @@ contract E2EYieldTest is Test {
     uint256 internal constant BOB_DEPOSIT   = 2_000e6; // 2,000 mUSDC
     uint256 internal constant YIELD_AMOUNT  =   300e6; // 300 mUSDC yield drip
 
+    /// @dev Maturity deadline for this suite. Far enough out that every
+    ///      step of the scenario (deposit, agent supply, yield drip) runs
+    ///      pre-maturity; the test warps past it explicitly before redeem.
+    uint256 internal deadline;
+
     function setUp() public {
         // ── Core token + vault ─────────────────────────────────────────────
         asset = new MockERC20();
-        vault = new Vault(IERC20(address(asset)), admin, authority, "AgentVault USDC", "avUSDC");
+        deadline = block.timestamp + 90 days;
+        vault = new Vault(
+            IERC20(address(asset)),
+            admin, authority,
+            "AgentVault USDC", "avUSDC",
+            deadline
+        );
 
         asset.mint(alice, ALICE_DEPOSIT);
         asset.mint(bob, BOB_DEPOSIT);
@@ -212,6 +225,13 @@ contract E2EYieldTest is Test {
             "TVL captures yield via value source"
         );
 
+        // ── Step 4b. Warp past the target-date deadline ───────────────────
+        // The vault is a TARGET-DATE fund: withdrawals are locked until the
+        // deadline to guarantee the accumulated yield stays working until
+        // the specified event. Jump just past it to unlock redeem().
+        vm.warp(deadline + 1);
+        assertTrue(vault.isMatured(), "vault matured");
+
         // ── Step 5. Alice redeems all her shares — must withdraw > 1,000 ──
         // Flow:
         //   1. vault.redeem burns Alice's shares
@@ -279,6 +299,69 @@ contract E2EYieldTest is Test {
         vm.prank(agent);
         vm.expectRevert(); // SpenderNotTrusted(evilSpender)
         strategy.approveToken(address(asset), evilSpender, type(uint256).max);
+    }
+
+    /// @notice Post-maturity lockout: executeAction and approveToken must
+    ///         both revert with VaultMatured once the deadline has passed.
+    ///         This prevents the AI agent from steering the strategy into
+    ///         NEW positions after the target-date fund has matured — from
+    ///         that moment on only user redemptions and authority drains
+    ///         are legitimate operations.
+    function test_e2e_agentBlockedAfterDeadline() public {
+        // Warp past maturity.
+        vm.warp(deadline + 1);
+
+        // executeAction must now revert with VaultMatured.
+        bytes memory supplyData = abi.encodeWithSelector(
+            pool.supply.selector, address(asset), uint256(1), address(strategy), uint16(0)
+        );
+        vm.prank(agent);
+        vm.expectRevert(abi.encodeWithSelector(IStrategy.VaultMatured.selector, deadline));
+        strategy.executeAction(address(pool), supplyData);
+
+        // approveToken must also revert — agent cannot bump allowances
+        // post-maturity either.
+        vm.prank(agent);
+        vm.expectRevert(abi.encodeWithSelector(IStrategy.VaultMatured.selector, deadline));
+        strategy.approveToken(address(asset), address(pool), 1);
+    }
+
+    /// @notice Anyone can call drainAllStrategies once the vault has
+    ///         matured — pulls every active strategy's full balance back
+    ///         to the vault in a single sweep. Before maturity the same
+    ///         call must revert with VaultNotMatured.
+    function test_e2e_drainAllStrategiesAfterMaturity() public {
+        // Arrange: Alice deposits, agent supplies into pool.
+        vm.startPrank(alice);
+        asset.approve(address(vault), ALICE_DEPOSIT);
+        vault.deposit(ALICE_DEPOSIT, alice);
+        vm.stopPrank();
+
+        vm.prank(agent);
+        strategy.executeAction(
+            address(pool),
+            abi.encodeWithSelector(
+                pool.supply.selector, address(asset), ALICE_DEPOSIT, address(strategy), uint16(0)
+            )
+        );
+
+        // Pre-maturity: drain is explicitly locked.
+        vm.expectRevert(abi.encodeWithSelector(IVault.VaultNotMatured.selector, deadline));
+        vault.drainAllStrategies();
+
+        // Warp past maturity and let the dripper accrue one more round.
+        vm.warp(deadline + 1 hours + 1);
+        dripper.drip();
+
+        uint256 expected = aToken.balanceOf(address(strategy));
+
+        // Permissionless — Alice (a regular user) triggers the drain.
+        vm.prank(alice);
+        uint256 totalPulled = vault.drainAllStrategies();
+
+        assertEq(totalPulled, expected, "drained whole aToken balance");
+        assertEq(aToken.balanceOf(address(strategy)), 0, "strategy aToken emptied");
+        assertEq(asset.balanceOf(address(vault)), expected, "vault idle = drained total");
     }
 
     /// @notice Negative path: if the agent tries to redirect the aToken

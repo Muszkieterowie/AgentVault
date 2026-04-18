@@ -41,9 +41,18 @@ contract VaultTest is Test {
     /// @dev Per-user initial balance. 1 M with 6 decimals = 1e12 raw units.
     uint256 internal constant INITIAL_BALANCE = 1_000_000e6;
 
+    /// @dev Deadline used by every test that exercises the pre-maturity
+    ///      (deposit-open) phase. 365 days out keeps us safely inside the
+    ///      working phase throughout the scenario unless a test explicitly
+    ///      warps past `deadline`.
+    uint256 internal deadline;
+
     function setUp() public {
         asset = new MockERC20();
-        vault = new Vault(IERC20(address(asset)), admin, authority, "AgentVault USDC", "avUSDC");
+        deadline = block.timestamp + 365 days;
+        vault = new Vault(
+            IERC20(address(asset)), admin, authority, "AgentVault USDC", "avUSDC", deadline
+        );
         asset.mint(alice, INITIAL_BALANCE);
         asset.mint(bob, INITIAL_BALANCE);
     }
@@ -74,15 +83,83 @@ contract VaultTest is Test {
     ///      must revert early.
     function test_constructor_revertsOnZeroAdmin() public {
         vm.expectRevert(IVault.ZeroAddress.selector);
-        new Vault(IERC20(address(asset)), address(0), authority, "x", "x");
+        new Vault(IERC20(address(asset)), address(0), authority, "x", "x", deadline);
+    }
+
+    /// @dev The deadline must be strictly in the future. A deadline already
+    ///      in the past would make the vault immediately matured with no
+    ///      deposits ever accepted — useless.
+    function test_constructor_revertsOnDeadlineInPast() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IVault.DeadlineInPast.selector, block.timestamp, block.timestamp)
+        );
+        new Vault(
+            IERC20(address(asset)), admin, authority, "x", "x", block.timestamp
+        );
+    }
+
+    // ─── Target-date gating ─────────────────────────────────────────────────
+
+    /// @dev Vault reports isMatured() correctly around the deadline boundary.
+    function test_isMatured_flipsAtDeadline() public {
+        assertFalse(vault.isMatured(), "pre-deadline: not matured");
+        vm.warp(deadline);
+        assertTrue(vault.isMatured(), "at deadline: matured");
+    }
+
+    /// @dev Withdrawal before the deadline must revert — funds are locked
+    ///      up working toward the target until the event date.
+    function test_withdraw_revertsBeforeDeadline() public {
+        vm.startPrank(alice);
+        asset.approve(address(vault), 100e6);
+        vault.deposit(100e6, alice);
+        vm.expectRevert(abi.encodeWithSelector(IVault.VaultNotMatured.selector, deadline));
+        vault.withdraw(50e6, alice, alice);
+        vm.stopPrank();
+    }
+
+    /// @dev redeem() uses the same `_withdraw` hook, so it must revert too.
+    function test_redeem_revertsBeforeDeadline() public {
+        vm.startPrank(alice);
+        asset.approve(address(vault), 100e6);
+        uint256 shares = vault.deposit(100e6, alice);
+        vm.expectRevert(abi.encodeWithSelector(IVault.VaultNotMatured.selector, deadline));
+        vault.redeem(shares, alice, alice);
+        vm.stopPrank();
+    }
+
+    /// @dev Deposit after maturity must revert — no new money into a fund
+    ///      whose event has arrived.
+    function test_deposit_revertsAfterDeadline() public {
+        vm.warp(deadline);
+        vm.startPrank(alice);
+        asset.approve(address(vault), 100e6);
+        vm.expectRevert(abi.encodeWithSelector(IVault.VaultMatured.selector, deadline));
+        vault.deposit(100e6, alice);
+        vm.stopPrank();
+    }
+
+    /// @dev Full target-date lifecycle: deposit while open → warp past
+    ///      deadline → redeem unlocks cleanly.
+    function test_depositWhileOpenThenRedeemAfterMaturity() public {
+        vm.startPrank(alice);
+        asset.approve(address(vault), 100e6);
+        uint256 shares = vault.deposit(100e6, alice);
+        vm.stopPrank();
+
+        vm.warp(deadline);
+        vm.prank(alice);
+        uint256 out = vault.redeem(shares, alice, alice);
+        assertEq(out, 100e6, "redeem returns original deposit (no yield here)");
+        assertEq(asset.balanceOf(alice), INITIAL_BALANCE);
     }
 
     // ─── Deposit / withdraw ─────────────────────────────────────────────────
 
     /// @dev Happy path for an empty-strategy vault: deposit mints shares,
     ///      assets sit idle in the vault (no strategy weight set), and a
-    ///      redeem of all shares returns the user to their original balance
-    ///      with no dust loss.
+    ///      redeem of all shares after maturity returns the user to their
+    ///      original balance with no dust loss.
     function test_deposit_mintsSharesAndRoundtrips() public {
         uint256 amount = 100e6;
         vm.startPrank(alice);
@@ -95,6 +172,8 @@ contract VaultTest is Test {
         assertEq(vault.totalAssets(), amount);
         assertEq(asset.balanceOf(address(vault)), amount);
 
+        // Target-date: withdrawals unlock only after the deadline.
+        vm.warp(deadline);
         vm.prank(alice);
         uint256 assetsOut = vault.redeem(shares, alice, alice);
         assertEq(assetsOut, amount);
@@ -212,6 +291,8 @@ contract VaultTest is Test {
         assertEq(asset.balanceOf(strategy0), amount);
         assertEq(asset.balanceOf(address(vault)), 0);
 
+        // Target-date: withdraw only after maturity.
+        vm.warp(deadline);
         vm.prank(alice);
         vault.withdraw(amount, alice, alice);
         assertEq(asset.balanceOf(alice), INITIAL_BALANCE);

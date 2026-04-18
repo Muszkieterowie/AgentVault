@@ -1,18 +1,60 @@
 // AgentVault — deployed addresses.
-// Source of truth: ../../deployments/base-sepolia.md
+// Source of truth: ../../../deployments/base-sepolia.md
 // Keep this file in sync whenever the deployment manifest changes.
+//
+// Deployment shape (latest): TWO target-date event vaults sharing a single
+// asset + pool + aToken + dripper. `ADDRESSES` below keeps the old flat
+// shape consumed by wagmi.ts pointing at the ETHSilesia vault as the
+// default; `VAULTS` is the canonical map the UI should switch over.
 
 export const CHAIN_ID = 84532; // Base Sepolia
 
+/// Shared infrastructure — one instance for both vaults.
+export const SHARED = {
+  asset:     "0xeae8c41253197440c84669982B84463cb3410E62", // DemoUSDC (6 dec)
+  pool:      "0x0D2dFFaFd9A1B0A8DCf2b37dE03eE6bC9DFC7fc3", // MockAavePool
+  aToken:    "0xE02ba4A93e60Fb14b54F4be96e3B84B6Ae77DD2c", // aDemoUSDC
+  debtToken: "0xc5e66419F10a26D66c4F76a7152EE92753A05029",
+  dripper:   "0x44F3d81c3b21C57a820C3D2eFb168F7c4Fd5a517", // YieldDripper, 100 USDC/h
+} as const satisfies Record<string, `0x${string}`>;
+
+/// Target-date event vaults. Each has its own Strategy clone + deadline.
+export const VAULTS = {
+  ETHSilesia: {
+    label: "ETHSilesia",
+    shareSymbol: "avETHSilesia",
+    vault:                  "0xBaCF3F8237BAbFF700B762561A3cCF474f6688A8",
+    strategyImplementation: "0xbE2c0aBdc927b37391865335A49227d439839441",
+    strategyId0:            "0xDc728730E5bc238f845f96318C49A9F01e99C217",
+    deadline:     1779105926, // 2026-05-18 14:05 UTC (30 day window)
+    deadlineUtc:  "2026-05-18T14:05:00Z",
+  },
+  ETHWarsaw: {
+    label: "ETHWarsaw",
+    shareSymbol: "avETHWarsaw",
+    vault:                  "0x26E20946d273d6B3d17094744C9C3d648DE7F425",
+    strategyImplementation: "0x56fF4C75bE854990E8a8708c21B75Aac2309cb77",
+    strategyId0:            "0xbf69d0cA0AcD1857C63047F3a75d3b0100869BEb",
+    deadline:     1781697926, // 2026-06-17 14:05 UTC (60 day window)
+    deadlineUtc:  "2026-06-17T14:05:00Z",
+  },
+} as const;
+
+export type VaultKey = keyof typeof VAULTS;
+export const DEFAULT_VAULT: VaultKey = "ETHSilesia";
+
+/// Legacy flat shape kept for wagmi.ts backward compatibility. Points at
+/// DEFAULT_VAULT — can still be overridden at runtime via the
+/// `NEXT_PUBLIC_VAULT_ADDRESS` env var.
 export const ADDRESSES = {
-  asset:                  "0x6a3601942C2F17370E87a2834317BFC24E0e9E70", // DemoUSDC (6 dec)
-  vault:                  "0x21c5b7a26a554748c1c557c50e78f5f178e5ba39", // ERC-4626
-  strategyImplementation: "0x11D310d30E32275b9F82e671a3b542a09B26c058",
-  strategyId0:            "0xbdf36639462Cf6174Dc895514DEbA2116850992E",
-  pool:                   "0x4CE0Ee1Ed18C2f0D9E5D45ed037380e482ba3C1A", // MockAavePool
-  aToken:                 "0xEb6566A83ec76Ed023370bAefBE5c0bc402243e5", // aDemoUSDC
-  debtToken:              "0x8f6193f8737913216A6144B18a6E9B4AbDDf8d92",
-  dripper:                "0xC74119243E3cb9474171740d7707F470F989c194", // YieldDripper
+  asset:                  SHARED.asset,
+  vault:                  VAULTS[DEFAULT_VAULT].vault,
+  strategyImplementation: VAULTS[DEFAULT_VAULT].strategyImplementation,
+  strategyId0:            VAULTS[DEFAULT_VAULT].strategyId0,
+  pool:                   SHARED.pool,
+  aToken:                 SHARED.aToken,
+  debtToken:              SHARED.debtToken,
+  dripper:                SHARED.dripper,
 } as const satisfies Record<string, `0x${string}`>;
 
 export type DeployedAddresses = typeof ADDRESSES;
