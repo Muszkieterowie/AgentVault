@@ -4,3 +4,5 @@ export { useStrategies, useIdleBalance } from "./useStrategies";
 export type { StrategyInfo } from "./useStrategies";
 export { useActivityFeed } from "./useActivityFeed";
 export type { ActivityRow } from "./useActivityFeed";
+export { useAllowedActions } from "./useAllowedActions";
+export type { AllowedActionEntry } from "./useAllowedActions";

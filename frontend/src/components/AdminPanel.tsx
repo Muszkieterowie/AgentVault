@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   useWriteContract,
   useWaitForTransactionReceipt,
@@ -20,7 +20,7 @@ import {
   ATOKEN_ADDRESS,
   DRIPPER_ADDRESS,
 } from "@/config/wagmi";
-import { useRoles, useStrategies, type StrategyInfo } from "@/hooks";
+import { useRoles, useStrategies, useAllowedActions, type StrategyInfo } from "@/hooks";
 import { encodeFunctionData, maxUint256, toFunctionSelector } from "viem";
 
 // Aave V3 pool selectors. Computed from the ABI so they stay in sync.
@@ -521,7 +521,40 @@ function AllowedActionEditor({
   const [target, setTarget] = useState<string>("");
   const [selector, setSelector] = useState<string>("");
   const [recipientOffset, setRecipientOffset] = useState("0");
-  const { writeContract, isPending } = useWriteContract();
+  const { writeContract, isPending, error } = useWriteContract();
+
+  // Include every preset, plus the (target, selector) currently typed in —
+  // so a custom entry the admin adds this session is also visible in the
+  // list without us having to trawl historical logs.
+  const candidates = useMemo(() => {
+    const base = ACTION_PRESETS.map((p) => ({
+      target: p.target as `0x${string}`,
+      selector: p.selector as `0x${string}`,
+      label: p.label,
+    }));
+    const typedValid =
+      /^0x[0-9a-fA-F]{40}$/.test(target) && /^0x[0-9a-fA-F]{8}$/.test(selector);
+    if (
+      typedValid &&
+      !base.some(
+        (b) =>
+          b.target.toLowerCase() === target.toLowerCase() &&
+          b.selector.toLowerCase() === selector.toLowerCase()
+      )
+    ) {
+      base.push({
+        target: target as `0x${string}`,
+        selector: selector as `0x${string}`,
+        label: undefined as unknown as string,
+      });
+    }
+    return base;
+  }, [target, selector]);
+
+  const { entries: whitelist, refetch: refetchWhitelist } = useAllowedActions(
+    strategyAddress,
+    candidates
+  );
 
   const applyPreset = (p: (typeof ACTION_PRESETS)[number]) => {
     setTarget(p.target);
@@ -529,25 +562,94 @@ function AllowedActionEditor({
     setRecipientOffset(String(p.recipientOffset));
   };
 
+  const alreadyAdded = !!whitelist.find(
+    (e) =>
+      target &&
+      selector &&
+      e.target.toLowerCase() === target.toLowerCase() &&
+      e.selector.toLowerCase() === selector.toLowerCase()
+  );
+
   return (
     <div className="space-y-2">
       <label className="block text-xs font-medium text-zinc-400">
         Whitelist Actions
       </label>
+
+      <div className="rounded border border-zinc-800 bg-zinc-950/50 p-2">
+        <div className="mb-1 text-[10px] uppercase tracking-wide text-zinc-500">
+          Currently whitelisted
+        </div>
+        {whitelist.length === 0 ? (
+          <div className="text-xs text-zinc-600">None.</div>
+        ) : (
+          <ul className="space-y-1">
+            {whitelist.map((e) => (
+              <li
+                key={`${e.target}:${e.selector}`}
+                className="flex items-center justify-between gap-2 text-xs"
+              >
+                <span className="truncate font-mono text-zinc-400">
+                  {e.label ? (
+                    <span className="mr-1 rounded bg-blue-950/60 px-1 py-0.5 text-blue-300 ring-1 ring-blue-900">
+                      {e.label}
+                    </span>
+                  ) : null}
+                  {e.target.slice(0, 6)}…{e.target.slice(-4)} · {e.selector}
+                  <span className="ml-1 text-zinc-600">(off {e.recipientOffset})</span>
+                </span>
+                <button
+                  type="button"
+                  disabled={!isAdmin || isPending}
+                  onClick={() =>
+                    writeContract(
+                      {
+                        address: strategyAddress,
+                        abi: StrategyABI,
+                        functionName: "removeAllowedAction",
+                        args: [e.target, e.selector],
+                      },
+                      { onSuccess: () => refetchWhitelist() }
+                    )
+                  }
+                  className="rounded bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-300 hover:bg-red-800/60 hover:text-white disabled:opacity-40"
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       <div className="flex flex-wrap gap-1">
-        {ACTION_PRESETS.map((p) => (
-          <button
-            key={p.label}
-            type="button"
-            onClick={() => applyPreset(p)}
-            className={`rounded px-2 py-0.5 text-xs ${selector === p.selector && target === p.target
-              ? "bg-blue-600 text-white"
-              : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+        {ACTION_PRESETS.map((p) => {
+          const isActive =
+            selector === p.selector && target === p.target;
+          const isAlreadyOn = whitelist.some(
+            (e) =>
+              e.target.toLowerCase() === p.target.toLowerCase() &&
+              e.selector.toLowerCase() === p.selector.toLowerCase()
+          );
+          return (
+            <button
+              key={p.label}
+              type="button"
+              onClick={() => applyPreset(p)}
+              className={`rounded px-2 py-0.5 text-xs ${
+                isActive
+                  ? "bg-blue-600 text-white"
+                  : isAlreadyOn
+                  ? "bg-emerald-900/40 text-emerald-300 ring-1 ring-emerald-800 hover:bg-emerald-900/60"
+                  : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
               }`}
-          >
-            {p.label}
-          </button>
-        ))}
+              title={isAlreadyOn ? "Already whitelisted" : undefined}
+            >
+              {p.label}
+              {isAlreadyOn ? " ✓" : ""}
+            </button>
+          );
+        })}
       </div>
       <input
         type="text"
@@ -574,38 +676,50 @@ function AllowedActionEditor({
       </div>
       <div className="flex gap-2">
         <button
-          disabled={!isAdmin || !target || !selector || isPending}
+          disabled={!isAdmin || !target || !selector || alreadyAdded || isPending}
           onClick={() =>
-            writeContract({
-              address: strategyAddress,
-              abi: StrategyABI,
-              functionName: "addAllowedAction",
-              args: [
-                target as `0x${string}`,
-                selector as `0x${string}`,
-                Number(recipientOffset || "0"),
-              ],
-            })
+            writeContract(
+              {
+                address: strategyAddress,
+                abi: StrategyABI,
+                functionName: "addAllowedAction",
+                args: [
+                  target as `0x${string}`,
+                  selector as `0x${string}`,
+                  Number(recipientOffset || "0"),
+                ],
+              },
+              { onSuccess: () => refetchWhitelist() }
+            )
           }
           className="rounded bg-green-700 px-3 py-1 text-xs text-white hover:bg-green-600 disabled:opacity-50"
+          title={alreadyAdded ? "Already whitelisted" : undefined}
         >
-          Add
+          {alreadyAdded ? "Already added" : "Add"}
         </button>
         <button
           disabled={!isAdmin || !target || !selector || isPending}
           onClick={() =>
-            writeContract({
-              address: strategyAddress,
-              abi: StrategyABI,
-              functionName: "removeAllowedAction",
-              args: [target as `0x${string}`, selector as `0x${string}`],
-            })
+            writeContract(
+              {
+                address: strategyAddress,
+                abi: StrategyABI,
+                functionName: "removeAllowedAction",
+                args: [target as `0x${string}`, selector as `0x${string}`],
+              },
+              { onSuccess: () => refetchWhitelist() }
+            )
           }
           className="rounded bg-red-700 px-3 py-1 text-xs text-white hover:bg-red-600 disabled:opacity-50"
         >
           Remove
         </button>
       </div>
+      {error && (
+        <p className="text-xs text-red-400">
+          {(error as Error).message.split("\n")[0]}
+        </p>
+      )}
     </div>
   );
 }
