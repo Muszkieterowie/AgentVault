@@ -74,10 +74,12 @@ const ACTION_PRESETS = [
 
 interface AdminProps {
   strategyCount: number;
-  decimals: number;
+  // Asset (not share) decimals — rebalance() consumes asset units, and the
+  // strategy totalValue display is also asset-denominated.
+  assetDecimals: number;
 }
 
-export function AdminPanel({ strategyCount, decimals }: AdminProps) {
+export function AdminPanel({ strategyCount, assetDecimals }: AdminProps) {
   const { isAdmin, isAuthority } = useRoles();
   const { strategies, refetch } = useStrategies(strategyCount);
 
@@ -89,7 +91,7 @@ export function AdminPanel({ strategyCount, decimals }: AdminProps) {
         <StrategyAdmin
           key={s.id}
           strategy={s}
-          decimals={decimals}
+          assetDecimals={assetDecimals}
           isAdmin={isAdmin}
           isAuthority={isAuthority}
           onSuccess={refetch}
@@ -225,13 +227,13 @@ function CreateStrategySection({
 
 function StrategyAdmin({
   strategy,
-  decimals,
+  assetDecimals,
   isAdmin,
   isAuthority,
   onSuccess,
 }: {
   strategy: StrategyInfo;
-  decimals: number;
+  assetDecimals: number;
   isAdmin: boolean;
   isAuthority: boolean;
   onSuccess: () => void;
@@ -285,7 +287,7 @@ function StrategyAdmin({
         />
         <RebalanceControl
           strategyId={strategy.id}
-          decimals={decimals}
+          assetDecimals={assetDecimals}
           isAuthority={isAuthority}
         />
         <DeactivateButton
@@ -856,11 +858,11 @@ function ValueSourceEditor({
 
 function RebalanceControl({
   strategyId,
-  decimals,
+  assetDecimals,
   isAuthority,
 }: {
   strategyId: number;
-  decimals: number;
+  assetDecimals: number;
   isAuthority: boolean;
 }) {
   const [delta, setDelta] = useState("");
@@ -869,7 +871,7 @@ function RebalanceControl({
 
   const handleRebalance = () => {
     if (!delta) return;
-    const rawDelta = BigInt(Math.round(parseFloat(delta) * 10 ** decimals));
+    const rawDelta = BigInt(Math.round(parseFloat(delta) * 10 ** assetDecimals));
     const signedDelta = direction === "pull" ? -rawDelta : rawDelta;
 
     writeContract({

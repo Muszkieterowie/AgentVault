@@ -12,31 +12,44 @@ import { VAULT_ADDRESS } from "@/config/wagmi";
 
 interface Props {
   vaultDecimals: number;
+  assetDecimals: number;
   assetSymbol?: string;
   userShares?: bigint;
   sharePrice: number;
   vaultAddress?: `0x${string}`;
+  deadline?: number;
   onSuccess?: () => void;
 }
 
 export function WithdrawForm({
   vaultDecimals,
+  assetDecimals,
   assetSymbol,
   userShares,
   sharePrice,
   vaultAddress,
+  deadline,
   onSuccess,
 }: Props) {
   const vault = vaultAddress ?? VAULT_ADDRESS;
   const { address } = useAccount();
   const [amount, setAmount] = useState("");
 
-  const { writeContract, data: txHash, isPending, reset } = useWriteContract();
+  // Target-date vaults reject withdraw/redeem until maturity. Surface it in
+  // the UI so the form doesn't appear to silently eat the click.
+  const nowSec = Math.floor(Date.now() / 1000);
+  const isMatured = deadline === undefined || nowSec >= deadline;
+
+  const { writeContract, data: txHash, isPending, error, reset } = useWriteContract();
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({
     hash: txHash,
   });
 
-  const parsedAmount = amount ? parseUnits(amount, vaultDecimals) : 0n;
+  // ERC-4626 `withdraw(assets, …)` consumes ASSET units, not share units.
+  // With the vault's decimal-offset of 6 (share = asset + 6), parsing the
+  // user's input against vaultDecimals silently asked for 10^6× more than
+  // intended and reverted on-chain.
+  const parsedAmount = amount ? parseUnits(amount, assetDecimals) : 0n;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,7 +108,7 @@ export function WithdrawForm({
             <button
               type="button"
               className="ml-2 text-blue-400 hover:text-blue-300"
-              onClick={() => setAmount(maxWithdrawable.toFixed(vaultDecimals))}
+              onClick={() => setAmount(maxWithdrawable.toFixed(assetDecimals))}
             >
               Max
             </button>
@@ -104,11 +117,22 @@ export function WithdrawForm({
       </div>
       <button
         type="submit"
-        disabled={!address || parsedAmount === 0n || isPending || isConfirming}
+        disabled={!address || parsedAmount === 0n || !isMatured || isPending || isConfirming}
         className="w-full rounded-lg bg-zinc-700 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-600 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isPending || isConfirming ? "Confirming…" : "Withdraw"}
       </button>
+      {!isMatured && deadline !== undefined && (
+        <p className="mt-2 text-xs text-amber-400">
+          Withdrawals unlock on{" "}
+          {new Date(deadline * 1000).toLocaleString()} (vault maturity).
+        </p>
+      )}
+      {error && (
+        <p className="mt-2 text-xs text-red-400">
+          {(error as Error).message.split("\n")[0]}
+        </p>
+      )}
     </form>
   );
 }

@@ -69,3 +69,8 @@ desktop.ini
 logs/
 tmp/
 .tmp/
+
+# ---------- Playwright / Playwright-MCP scratch output ----------
+.playwright-mcp/
+playwright-report/
+test-results/

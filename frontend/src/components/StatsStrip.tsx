@@ -6,8 +6,7 @@ import { useVaultReads, useAssetInfo } from "@/hooks";
 export function StatsStrip({ vaultAddress }: { vaultAddress?: `0x${string}` }) {
   const {
     totalAssets,
-    vaultDecimals,
-    vaultName,
+    assetDecimals,
     sharePrice,
     userShares,
     userAssetsValue,
@@ -37,7 +36,7 @@ export function StatsStrip({ vaultAddress }: { vaultAddress?: `0x${string}` }) {
     {
       label: "TVL",
       value: totalAssets
-        ? `${Number(formatUnits(totalAssets, vaultDecimals)).toLocaleString(
+        ? `${Number(formatUnits(totalAssets, assetDecimals)).toLocaleString(
             undefined,
             { maximumFractionDigits: 2 }
           )} ${assetSymbol ?? ""}`

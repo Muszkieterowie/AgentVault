@@ -4,7 +4,7 @@ import { AdminPanel } from "@/components";
 import { useVaultReads } from "@/hooks";
 
 export default function AdminPage() {
-  const { strategyCount, vaultDecimals } = useVaultReads();
+  const { strategyCount, assetDecimals } = useVaultReads();
 
   return (
     <div className="space-y-6">
@@ -14,7 +14,7 @@ export default function AdminPage() {
         appropriate role. Buttons are disabled unless the connected wallet holds
         DEFAULT_ADMIN_ROLE or AUTHORITY_ROLE.
       </p>
-      <AdminPanel strategyCount={strategyCount} decimals={vaultDecimals} />
+      <AdminPanel strategyCount={strategyCount} assetDecimals={assetDecimals} />
     </div>
   );
 }

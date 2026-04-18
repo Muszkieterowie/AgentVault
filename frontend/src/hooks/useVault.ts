@@ -38,23 +38,36 @@ export function useVaultReads(vaultAddr?: `0x${string}`) {
     const strategyCount = data?.[6]?.result;
     const userShares = userSharesData;
 
-    const decimals = vaultDecimals ?? 18;
-    const sharePrice =
-        totalSupply && totalSupply > 0n
-            ? Number(formatUnits(totalAssets ?? 0n, decimals)) /
-            Number(formatUnits(totalSupply, decimals))
-            : 1;
+    // The vault uses ERC-4626 decimal offset: share decimals = asset decimals
+    // + offset (6). `totalAssets` is denominated in ASSET units, `totalSupply`
+    // and `userShares` in SHARE units. Mixing them with a single `decimals`
+    // produces silently wrong TVL / share-price / position numbers (asset-side
+    // gets divided by the share scale, flattening everything to ~0).
+    const { data: assetDecimalsData } = useReadContract({
+        address: assetAddress as `0x${string}` | undefined,
+        abi: ERC20ABI,
+        functionName: "decimals",
+        query: { enabled: !!assetAddress },
+    });
 
-    const userAssetsValue =
-        userShares !== undefined
-            ? Number(formatUnits(userShares, decimals)) * sharePrice
-            : 0;
+    const shareDecimals = vaultDecimals ?? 18;
+    const assetDecimals = (assetDecimalsData as number | undefined) ?? shareDecimals;
+
+    const totalAssetsHuman = Number(formatUnits(totalAssets ?? 0n, assetDecimals));
+    const totalSupplyHuman = Number(formatUnits(totalSupply ?? 0n, shareDecimals));
+    const sharePrice = totalSupplyHuman > 0 ? totalAssetsHuman / totalSupplyHuman : 1;
+
+    const userSharesHuman = userShares !== undefined
+        ? Number(formatUnits(userShares, shareDecimals))
+        : 0;
+    const userAssetsValue = userSharesHuman * sharePrice;
 
     return {
         totalAssets,
         totalSupply,
         assetAddress,
-        vaultDecimals: decimals,
+        vaultDecimals: shareDecimals,
+        assetDecimals,
         vaultName,
         vaultSymbol,
         strategyCount: strategyCount ? Number(strategyCount) : 0,

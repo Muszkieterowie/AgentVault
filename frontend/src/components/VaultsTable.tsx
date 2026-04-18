@@ -2,8 +2,8 @@
 
 import { formatUnits } from "viem";
 import { useReadContracts } from "wagmi";
-import { VaultABI } from "@/abi";
-import { VAULTS, type VaultKey } from "@/config/contracts";
+import { VaultABI, ERC20ABI } from "@/abi";
+import { SHARED, VAULTS, type VaultKey } from "@/config/contracts";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -14,25 +14,31 @@ export function VaultsTable() {
   const router = useRouter();
 
   const { data, isLoading } = useReadContracts({
-    contracts: vaultKeys.flatMap((key) => [
+    contracts: [
+      ...vaultKeys.flatMap((key) => [
+        {
+          address: VAULTS[key].vault as `0x${string}`,
+          abi: VaultABI,
+          functionName: "totalAssets" as const,
+        },
+        {
+          address: VAULTS[key].vault as `0x${string}`,
+          abi: VaultABI,
+          functionName: "strategyCount" as const,
+        },
+      ]),
+      // TVL is asset-denominated, not share-denominated — formatting against
+      // the vault's own decimals() underflows by 10^offset and reads "0".
       {
-        address: VAULTS[key].vault as `0x${string}`,
-        abi: VaultABI,
-        functionName: "totalAssets" as const,
-      },
-      {
-        address: VAULTS[key].vault as `0x${string}`,
-        abi: VaultABI,
+        address: SHARED.asset as `0x${string}`,
+        abi: ERC20ABI,
         functionName: "decimals" as const,
       },
-      {
-        address: VAULTS[key].vault as `0x${string}`,
-        abi: VaultABI,
-        functionName: "strategyCount" as const,
-      },
-    ]),
+    ],
     query: { refetchInterval: 12_000 },
   });
+
+  const assetDecimals = (data?.[vaultKeys.length * 2]?.result as number | undefined) ?? 18;
 
   const copyAddress = async (address: string) => {
     await navigator.clipboard.writeText(address);
@@ -60,9 +66,8 @@ export function VaultsTable() {
         <tbody className="divide-y divide-zinc-800">
           {vaultKeys.map((key, idx) => {
             const v = VAULTS[key];
-            const totalAssets = data?.[idx * 3]?.result as bigint | undefined;
-            const decimals = (data?.[idx * 3 + 1]?.result as number) ?? 18;
-            const strategyCount = data?.[idx * 3 + 2]?.result as
+            const totalAssets = data?.[idx * 2]?.result as bigint | undefined;
+            const strategyCount = data?.[idx * 2 + 1]?.result as
               | bigint
               | undefined;
 
@@ -95,7 +100,7 @@ export function VaultsTable() {
                 <td className="px-4 py-3 text-zinc-300">{v.shareSymbol}</td>
                 <td className="px-4 py-3 text-zinc-300">
                   {totalAssets !== undefined
-                    ? Number(formatUnits(totalAssets, decimals)).toLocaleString(
+                    ? Number(formatUnits(totalAssets, assetDecimals)).toLocaleString(
                         undefined,
                         { maximumFractionDigits: 2 }
                       )

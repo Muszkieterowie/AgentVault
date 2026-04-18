@@ -7,21 +7,22 @@ import Link from "next/link";
 
 interface Props {
   strategyCount: number;
-  decimals: number;
+  // Asset (not share) decimals — Strategy.totalValue() is denominated in the
+  // vault's underlying asset, so formatting against the share decimals would
+  // underflow by 10^offset and display as 0.
+  assetDecimals: number;
   vaultAddress?: `0x${string}`;
   hideNavigation?: boolean;
 }
 
 export function StrategyTable({
   strategyCount,
-  decimals,
+  assetDecimals,
   vaultAddress,
   hideNavigation,
 }: Props) {
   const { strategies, isLoading } = useStrategies(strategyCount, vaultAddress);
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
-
-  console.log("strategies", strategies);
 
   const copyAddress = async (address: string) => {
     await navigator.clipboard.writeText(address);
@@ -83,7 +84,7 @@ export function StrategyTable({
               </td>
               <td className="px-4 py-3 text-zinc-300">{s.weight.toString()}</td>
               <td className="px-4 py-3 text-zinc-300">
-                {Number(formatUnits(s.totalValue, decimals)).toLocaleString(
+                {Number(formatUnits(s.totalValue, assetDecimals)).toLocaleString(
                   undefined,
                   { maximumFractionDigits: 2 }
                 )}

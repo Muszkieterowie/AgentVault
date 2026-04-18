@@ -1,13 +1,24 @@
 "use client";
 
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { useRoles } from "@/hooks";
+import { useAccount } from "wagmi";
+import { useRoles, useUserAssetBalance, useAssetInfo } from "@/hooks";
+import { ASSET_ADDRESS } from "@/config/wagmi";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 export function Header() {
   const { isAdmin, isAuthority } = useRoles();
   const pathname = usePathname();
+  const { address } = useAccount();
+  const { assetSymbol, assetDecimals } = useAssetInfo(ASSET_ADDRESS);
+  const balance = useUserAssetBalance(ASSET_ADDRESS, address);
+  const formattedBalance =
+    balance !== undefined
+      ? (Number(balance) / 10 ** assetDecimals).toLocaleString(undefined, {
+          maximumFractionDigits: 2,
+        })
+      : undefined;
 
   return (
     <header className="border-b border-zinc-800 bg-zinc-950 px-6 py-4">
@@ -60,7 +71,16 @@ export function Header() {
               authority
             </span>
           )}
-          <ConnectButton />
+          {address && formattedBalance !== undefined && (
+            <span
+              data-testid="header-wallet-balance"
+              className="rounded-lg bg-zinc-900 px-3 py-1 text-xs font-mono text-zinc-300 ring-1 ring-zinc-800"
+              title={`${formattedBalance} ${assetSymbol ?? ""} held by ${address}`}
+            >
+              {formattedBalance} {assetSymbol ?? ""}
+            </span>
+          )}
+          <ConnectButton showBalance={false} />
         </div>
       </div>
     </header>

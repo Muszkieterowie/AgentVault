@@ -4,22 +4,26 @@ const RPC_URLS: Record<string, string | undefined> = {
     "84532": process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL || process.env.NEXT_PUBLIC_LOCAL_RPC_URL,
 };
 
-const ALLOWED_METHODS = new Set([
-    "eth_call",
-    "eth_getBalance",
-    "eth_getTransactionReceipt",
-    "eth_getTransactionByHash",
-    "eth_blockNumber",
-    "eth_getBlockByNumber",
-    "eth_getLogs",
-    "eth_chainId",
-    "eth_estimateGas",
-    "eth_gasPrice",
-    "eth_getCode",
-    "eth_getStorageAt",
-    "eth_getTransactionCount",
-    "eth_sendRawTransaction",
-    "net_version",
+// Accept any standard read-only or raw-tx JSON-RPC method. Wagmi/viem probe a
+// broad set (eth_feeHistory, eth_maxPriorityFeePerGas, eth_getBlockByHash,
+// web3_clientVersion, eth_newBlockFilter, …) depending on version and node
+// detection; listing them all by hand kept drifting out of date. This regex
+// allows the standard namespaces while still blocking anything weird.
+const METHOD_PATTERN = /^(eth|net|web3)_[A-Za-z0-9_]+$/;
+
+// Methods that can mutate wallet state or attempt local signing — must never
+// be proxied from a browser. The server has no private key, but an upstream
+// node that accidentally has one unlocked would be catastrophic.
+const BLOCKED_METHODS = new Set([
+    "eth_sign",
+    "eth_signTransaction",
+    "eth_signTypedData",
+    "eth_signTypedData_v3",
+    "eth_signTypedData_v4",
+    "personal_sign",
+    "personal_ecRecover",
+    "eth_accounts",
+    "eth_requestAccounts",
 ]);
 
 export async function POST(
@@ -43,7 +47,7 @@ export async function POST(
         return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
     }
 
-    if (!body.method || !ALLOWED_METHODS.has(body.method)) {
+    if (!body.method || !METHOD_PATTERN.test(body.method) || BLOCKED_METHODS.has(body.method)) {
         return NextResponse.json(
             { error: `Method not allowed: ${body.method}` },
             { status: 403 }

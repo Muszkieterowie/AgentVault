@@ -11,9 +11,9 @@ export const CHAIN_ID = 84532; // Base Sepolia
 
 /// Shared infrastructure — one instance for both vaults.
 export const SHARED = {
-  asset:     "0xeae8c41253197440c84669982B84463cb3410E62", // DemoUSDC (6 dec)
-  pool:      "0x0D2dFFaFd9A1B0A8DCf2b37dE03eE6bC9DFC7fc3", // MockAavePool
-  aToken:    "0xE02ba4A93e60Fb14b54F4be96e3B84B6Ae77DD2c", // aDemoUSDC
+  asset:     "0xEAE8C41253197440c84669982b84463cb3410E62", // DemoUSDC (6 dec)
+  pool:      "0xA3269593C784Ae3cf068fEfBCe15851C0895e738", // MockAavePool
+  aToken:    "0xda1439a46687b8494c42e4d91bF1d69364D65E4A", // aDemoUSDC
   debtToken: "0xc5e66419F10a26D66c4F76a7152EE92753A05029",
   dripper:   "0x44F3d81c3b21C57a820C3D2eFb168F7c4Fd5a517", // YieldDripper, 100 USDC/h
 } as const satisfies Record<string, `0x${string}`>;

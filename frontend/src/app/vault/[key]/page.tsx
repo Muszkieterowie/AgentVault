@@ -98,10 +98,12 @@ export default function VaultPage({
         />
         <WithdrawForm
           vaultDecimals={vaultDecimals}
+          assetDecimals={assetDecimals}
           assetSymbol={assetSymbol}
           userShares={userShares}
           sharePrice={sharePrice}
           vaultAddress={vaultAddress}
+          deadline={vaultConfig.deadline}
           onSuccess={refetch}
         />
       </div>
@@ -111,7 +113,7 @@ export default function VaultPage({
         <h2 className="text-lg font-semibold text-zinc-200 mb-3">Strategies</h2>
         <StrategyTable
           strategyCount={strategyCount}
-          decimals={vaultDecimals}
+          assetDecimals={assetDecimals}
           vaultAddress={vaultAddress}
           hideNavigation
         />
