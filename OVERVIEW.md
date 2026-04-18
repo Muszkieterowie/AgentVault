@@ -1,4 +1,4 @@
-# AgentVault — High-Level Overview
+# AISandbox — High-Level Overview
 
 > **One line:** a non-custodial ERC-4626 vault where AI agents manage real
 > capital inside a sandbox small enough that a compromised agent can't steal,
@@ -13,13 +13,13 @@ lend into Aave, borrow, swap, loop, rebalance — **on behalf of many users**.
 
 Three things that make this hard:
 
-| Concern | What can go wrong |
-|---|---|
-| **Custody** | Agent keys get phished → the agent drains the vault. |
-| **Silent misuse** | Agent makes an innocent-looking tx that quietly sends funds to an attacker. |
-| **Spread of damage** | One bad strategy shouldn't hurt users who chose a different strategy. |
+| Concern              | What can go wrong                                                           |
+| -------------------- | --------------------------------------------------------------------------- |
+| **Custody**          | Agent keys get phished → the agent drains the vault.                        |
+| **Silent misuse**    | Agent makes an innocent-looking tx that quietly sends funds to an attacker. |
+| **Spread of damage** | One bad strategy shouldn't hurt users who chose a different strategy.       |
 
-AgentVault answers all three: **the agent never holds user funds, can
+AISandbox answers all three: **the agent never holds user funds, can
 only call pre-approved protocol actions, and each strategy lives in its
 own separate contract.**
 
@@ -88,7 +88,7 @@ flowchart LR
 ### 3.1 Strategies are real contracts, not just ledger rows
 
 Most multi-strategy vaults just remember how much each strategy owns in
-a lookup table. AgentVault instead deploys a **separate Strategy
+a lookup table. AISandbox instead deploys a **separate Strategy
 contract per strategy**, cloned via EIP-1167 minimal proxies.
 
 ```mermaid
@@ -126,7 +126,7 @@ Whitelisting `aavePool.supply` on Strategy 0 does **not** let Strategy
 ### 3.3 Anti-theft check on every call
 
 Even with a whitelisted call, the delegate could try calling something
-like `someRouter.swapToSelf(...)` if the admin slipped up. AgentVault
+like `someRouter.swapToSelf(...)` if the admin slipped up. AISandbox
 catches this with a simple rule enforced at call time:
 
 > **The caller's asset balance must not go up after the call.**
@@ -155,12 +155,12 @@ flowchart TB
     USR --> |deposit,<br/>withdraw,<br/>redeem,<br/>mint| Caps4[ERC-4626 share mgmt]
 ```
 
-| Role | Held by | Can do | Cannot do |
-|---|---|---|---|
-| **Admin** | Multisig / DAO | Configure vault + strategies, whitelist actions | Move funds directly |
-| **Authority** | Rebalancer EOA / keeper | Push/pull funds between vault ↔ strategies; override any agent | Change whitelists |
-| **Delegate** | AI agent EOA (per strategy) | Invoke whitelisted actions on its own strategy | Touch any other strategy, move funds outside whitelist |
-| **User** | Anyone | ERC-4626 deposit/withdraw | Anything privileged |
+| Role          | Held by                     | Can do                                                         | Cannot do                                              |
+| ------------- | --------------------------- | -------------------------------------------------------------- | ------------------------------------------------------ |
+| **Admin**     | Multisig / DAO              | Configure vault + strategies, whitelist actions                | Move funds directly                                    |
+| **Authority** | Rebalancer EOA / keeper     | Push/pull funds between vault ↔ strategies; override any agent | Change whitelists                                      |
+| **Delegate**  | AI agent EOA (per strategy) | Invoke whitelisted actions on its own strategy                 | Touch any other strategy, move funds outside whitelist |
+| **User**      | Anyone                      | ERC-4626 deposit/withdraw                                      | Anything privileged                                    |
 
 ---
 
@@ -363,6 +363,7 @@ flowchart TB
 ```
 
 On **Base Sepolia** (see [DEPLOYMENTS.md](DEPLOYMENTS.md)):
+
 - Two vaults: `avUSDC`, `avWETH`
 - Each USDC strategy points at `MockAavePool` + `aUSDCm` rebasing aToken
 - `YieldDripper` drips yield into `aUSDCm` on a schedule — simulates
@@ -375,15 +376,15 @@ address. No production deployment yet.
 
 ## 10. Security model
 
-| Threat | Mitigation |
-|---|---|
-| Agent key is stolen and tries to drain the vault | Agent has no token approvals; must go through the per-strategy whitelisted selector. |
-| A whitelisted call tries to reroute funds | Anti-theft check on caller balance + optional `recipientOffset` check. |
-| Strategy A's delegate tries to move Strategy B's funds | Strategies are separate contracts with separate approvals. |
-| Re-entrancy during action execution | `nonReentrant` on every external fund-movement entrypoint on both Vault and Strategy. |
-| Inflation attack on a fresh vault | `_decimalsOffset = 6` (OpenZeppelin virtual shares pattern). |
-| Admin makes a mistake | Strategy deactivation is **permanent** — there's no way to turn one back on. |
-| Strategy gets re-initialized | Implementation constructor locks `initialized = true`; `initialize` can only run once per clone. |
+| Threat                                                 | Mitigation                                                                                       |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| Agent key is stolen and tries to drain the vault       | Agent has no token approvals; must go through the per-strategy whitelisted selector.             |
+| A whitelisted call tries to reroute funds              | Anti-theft check on caller balance + optional `recipientOffset` check.                           |
+| Strategy A's delegate tries to move Strategy B's funds | Strategies are separate contracts with separate approvals.                                       |
+| Re-entrancy during action execution                    | `nonReentrant` on every external fund-movement entrypoint on both Vault and Strategy.            |
+| Inflation attack on a fresh vault                      | `_decimalsOffset = 6` (OpenZeppelin virtual shares pattern).                                     |
+| Admin makes a mistake                                  | Strategy deactivation is **permanent** — there's no way to turn one back on.                     |
+| Strategy gets re-initialized                           | Implementation constructor locks `initialized = true`; `initialize` can only run once per clone. |
 
 ---
 
@@ -407,7 +408,7 @@ These can all be added on later; the core model is stable.
 
 If you get 60 seconds:
 
-> AgentVault is an ERC-4626 vault that lets AI agents move real money
+> AISandbox is an ERC-4626 vault that lets AI agents move real money
 > without being able to steal any of it. Each strategy is a separate
 > sandbox contract. The agent can only call pre-approved DeFi actions,
 > and even then, if any of those actions would reroute assets to the

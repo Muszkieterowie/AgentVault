@@ -40,7 +40,7 @@
 <polyline points="470,490 470,320" fill="none" stroke="#495057" stroke-width="2" stroke-dasharray="8,6" opacity="1.0" marker-end="url(#arrow_495057)" />
 <defs><marker id="arrow_495057" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#495057"/></marker></defs>
 <polyline points="520,570 540,320" fill="none" stroke="#495057" stroke-width="2" stroke-dasharray="8,6" opacity="1.0" marker-end="url(#arrow_495057)" />
-<text x="40" y="38.0" font-size="28" fill="#1e1e1e" text-anchor="start">AgentVault — high level architecture</text>
+<text x="40" y="38.0" font-size="28" fill="#1e1e1e" text-anchor="start">AISandbox — high level architecture</text>
 <text x="56" y="110.0" font-size="18" fill="#0c8599" text-anchor="start">Users</text>
 <text x="140.0" y="186.0" font-size="18" fill="#1e1e1e" text-anchor="middle">User A</text>
 <text x="140.0" y="276.0" font-size="18" fill="#1e1e1e" text-anchor="middle">User B</text>

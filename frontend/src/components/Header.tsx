@@ -25,7 +25,7 @@ export function Header() {
       <div className="mx-auto flex max-w-7xl items-center justify-between">
         <div className="flex items-center gap-6">
           <Link href="/" className="text-xl font-bold text-white">
-            AgentVault
+            🍕 AISandbox
           </Link>
           <nav className="flex gap-4">
             <Link
@@ -38,26 +38,6 @@ export function Header() {
             >
               Dashboard
             </Link>
-            {/* <Link
-              href="/vault"
-              className={`text-sm ${
-                pathname === "/vault"
-                  ? "text-blue-400 font-medium"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              Vault
-            </Link> */}
-            {/* <Link
-              href="/admin"
-              className={`text-sm ${
-                pathname === "/admin"
-                  ? "text-blue-400 font-medium"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              Admin
-            </Link> */}
           </nav>
         </div>
         <div className="flex items-center gap-3">

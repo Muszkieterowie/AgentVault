@@ -67,4 +67,4 @@ $ cast --help
 
 ## License
 
-AgentVault is licensed under the GNU General Public License v3.0 or later — see [LICENSE](LICENSE) for the full text.
+AISandbox is licensed under the GNU General Public License v3.0 or later — see [LICENSE](LICENSE) for the full text.

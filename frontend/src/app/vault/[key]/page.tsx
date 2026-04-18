@@ -44,14 +44,14 @@ export default function VaultPage({
         <div>
           <Link
             href="/"
-            className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+            className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors mb-4 inline-block"
           >
             ← Back to Vaults
           </Link>
-          <h1 className="text-3xl font-bold text-white mb-1">
+          <h1 className="text-3xl font-bold text-white mb-3">
             {vaultName || vaultConfig.label}
           </h1>
-          <p className="text-sm text-zinc-400">
+          <p className="text-sm text-zinc-400 mt-2">
             {vaultConfig.shareSymbol} · Deadline:{" "}
             {new Date(vaultConfig.deadline * 1000).toLocaleDateString()}
           </p>

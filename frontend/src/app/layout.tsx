@@ -7,7 +7,7 @@ import { Header } from "@/components/Header";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "AgentVault",
+  title: "AISandbox",
   description: "Non-custodial ERC-4626 vault managed by AI agents",
 };
 

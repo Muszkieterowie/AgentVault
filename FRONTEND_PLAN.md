@@ -1,6 +1,6 @@
-# AgentVault Frontend — MVP Plan
+# AISandbox Frontend — MVP Plan
 
-A single-page Next.js dashboard bound to the AgentVault contracts on
+A single-page Next.js dashboard bound to the AISandbox contracts on
 **Base Sepolia**. Public users deposit and withdraw; admins configure
 strategies; an authority can manually rebalance.
 

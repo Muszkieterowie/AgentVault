@@ -10,7 +10,7 @@ The `.claude/` directory is gitignored; see [CLAUDE_SETUP.md](CLAUDE_SETUP.md) f
 
 ## What this project is
 
-AgentVault is a non-custodial ERC-4626 vault that lets AI-agent EOAs manage DeFi positions on behalf of users without ever holding the funds. The architecture hinges on three non-obvious choices that must be preserved by any change:
+AISandbox is a non-custodial ERC-4626 vault that lets AI-agent EOAs manage DeFi positions on behalf of users without ever holding the funds. The architecture hinges on three non-obvious choices that must be preserved by any change:
 
 1. **Each strategy is its own contract**, cloned via EIP-1167 from a single locked implementation. Strategy A's delegate cannot reach Strategy B's balances or approvals — the isolation is physical, not a ledger row.
 2. **Whitelists are scoped per strategy**, not global. `allowedActions[target][selector]` on Strategy 0 does not authorize the same call on Strategy 1.
@@ -20,12 +20,12 @@ See [OVERVIEW.md §7](OVERVIEW.md) for the full `executeAction` validation flowc
 
 ## Role model (do not blur)
 
-| Role | Holder | Capability boundary |
-|---|---|---|
-| `DEFAULT_ADMIN_ROLE` | multisig/DAO | Configures vault + strategies, manages whitelist. **Cannot move funds.** |
-| `AUTHORITY_ROLE` | keeper EOA | Rebalances vault↔strategies, can override agent via `executeAction`. **Cannot change whitelists.** |
-| Delegate (per-strategy field, not a role) | AI-agent EOA | `executeAction` on its own strategy only. No token approvals. |
-| User | anyone | ERC-4626 `deposit`/`mint`/`withdraw`/`redeem`. |
+| Role                                      | Holder       | Capability boundary                                                                                |
+| ----------------------------------------- | ------------ | -------------------------------------------------------------------------------------------------- |
+| `DEFAULT_ADMIN_ROLE`                      | multisig/DAO | Configures vault + strategies, manages whitelist. **Cannot move funds.**                           |
+| `AUTHORITY_ROLE`                          | keeper EOA   | Rebalances vault↔strategies, can override agent via `executeAction`. **Cannot change whitelists.** |
+| Delegate (per-strategy field, not a role) | AI-agent EOA | `executeAction` on its own strategy only. No token approvals.                                      |
+| User                                      | anyone       | ERC-4626 `deposit`/`mint`/`withdraw`/`redeem`.                                                     |
 
 Strategy **deactivation is permanent** by design — there is intentionally no reactivation path. Do not add one without an explicit design discussion.
 

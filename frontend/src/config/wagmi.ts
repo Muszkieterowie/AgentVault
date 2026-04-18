@@ -10,7 +10,7 @@ import { ADDRESSES, CHAIN_ID } from "./contracts";
 // include any WC-backed wallet in the list.
 const connectors = connectorsForWallets(
     [{ groupName: "Recommended", wallets: [injectedWallet] }],
-    { appName: "AgentVault", projectId: "unused" }
+    { appName: "AISandbox", projectId: "unused" }
 );
 
 export const config = createConfig({
