@@ -698,7 +698,11 @@ function AllowedActionEditor({
   // so a custom entry the admin adds this session is also visible in the
   // list without us having to trawl historical logs.
   const candidates = useMemo(() => {
-    const base = ACTION_PRESETS.map((p) => ({
+    const base: Array<{
+      target: `0x${string}`;
+      selector: `0x${string}`;
+      label?: string;
+    }> = ACTION_PRESETS.map((p) => ({
       target: p.target as `0x${string}`,
       selector: p.selector as `0x${string}`,
       label: p.label,
@@ -716,7 +720,6 @@ function AllowedActionEditor({
       base.push({
         target: target as `0x${string}`,
         selector: selector as `0x${string}`,
-        label: undefined as unknown as string,
       });
     }
     return base;
