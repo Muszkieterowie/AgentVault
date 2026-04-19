@@ -5,6 +5,7 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
   useReadContract,
+  usePublicClient,
 } from "wagmi";
 import {
   VaultABI,
@@ -77,19 +78,35 @@ interface AdminProps {
   // Asset (not share) decimals — rebalance() consumes asset units, and the
   // strategy totalValue display is also asset-denominated.
   assetDecimals: number;
+  /** Vault being administered. Required: there is more than one vault on-chain
+   *  so defaulting to a single VAULT_ADDRESS silently admins the wrong one. */
+  vaultAddress: `0x${string}`;
+  /** Underlying asset of {vaultAddress}. Used for the idle-balance read. */
+  assetAddress: `0x${string}`;
 }
 
-export function AdminPanel({ strategyCount, assetDecimals }: AdminProps) {
-  const { isAdmin, isAuthority } = useRoles();
-  const { strategies, refetch } = useStrategies(strategyCount);
+export function AdminPanel({
+  strategyCount,
+  assetDecimals,
+  vaultAddress,
+  assetAddress,
+}: AdminProps) {
+  const { isAdmin, isAuthority } = useRoles(vaultAddress);
+  const { strategies, refetch } = useStrategies(strategyCount, vaultAddress);
 
   return (
     <div className="space-y-8">
       <YieldDripperCard />
-      <CreateStrategySection isAdmin={isAdmin} onSuccess={refetch} />
+      <CreateStrategySection
+        vaultAddress={vaultAddress}
+        isAdmin={isAdmin}
+        onSuccess={refetch}
+      />
       <RebalanceToWeightsCard
         strategies={strategies}
         assetDecimals={assetDecimals}
+        vaultAddress={vaultAddress}
+        assetAddress={assetAddress}
         isAuthority={isAuthority}
         onSuccess={refetch}
       />
@@ -98,6 +115,7 @@ export function AdminPanel({ strategyCount, assetDecimals }: AdminProps) {
           key={s.id}
           strategy={s}
           assetDecimals={assetDecimals}
+          vaultAddress={vaultAddress}
           isAdmin={isAdmin}
           isAuthority={isAuthority}
           onSuccess={refetch}
@@ -118,16 +136,21 @@ export function AdminPanel({ strategyCount, assetDecimals }: AdminProps) {
 function RebalanceToWeightsCard({
   strategies,
   assetDecimals,
+  vaultAddress,
+  assetAddress,
   isAuthority,
   onSuccess,
 }: {
   strategies: StrategyInfo[];
   assetDecimals: number;
+  vaultAddress: `0x${string}`;
+  assetAddress: `0x${string}`;
   isAuthority: boolean;
   onSuccess: () => void;
 }) {
-  const idle = useIdleBalance(ASSET_ADDRESS);
+  const idle = useIdleBalance(assetAddress, vaultAddress);
   const { writeContractAsync } = useWriteContract();
+  const publicClient = usePublicClient();
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -155,28 +178,32 @@ function RebalanceToWeightsCard({
       { maximumFractionDigits: 2 }
     );
 
+  // Pushes read from idle — they must see the preceding pull's effect, so we
+  // wait for each receipt before sending the next tx. writeContractAsync
+  // resolves on broadcast; without this the node would simulate the push
+  // against pre-pull state and the rebalance() guard reverts.
+  const sendAndWait = async (id: number, delta: bigint) => {
+    if (!publicClient) throw new Error("No public client");
+    const hash = await writeContractAsync({
+      address: vaultAddress,
+      abi: VaultABI,
+      functionName: "rebalance",
+      args: [BigInt(id), delta],
+    });
+    await publicClient.waitForTransactionReceipt({ hash });
+  };
+
   const run = async () => {
     setBusy(true);
     setError(null);
     try {
-      // Pulls first: they fund the idle pool that subsequent pushes spend from.
       for (const p of pulls) {
         setStatus(`Pulling ${fmt(p.delta)} from strategy ${p.id}…`);
-        await writeContractAsync({
-          address: VAULT_ADDRESS,
-          abi: VaultABI,
-          functionName: "rebalance",
-          args: [BigInt(p.id), p.delta],
-        });
+        await sendAndWait(p.id, p.delta);
       }
       for (const p of pushes) {
         setStatus(`Pushing ${fmt(p.delta)} into strategy ${p.id}…`);
-        await writeContractAsync({
-          address: VAULT_ADDRESS,
-          abi: VaultABI,
-          functionName: "rebalance",
-          args: [BigInt(p.id), p.delta],
-        });
+        await sendAndWait(p.id, p.delta);
       }
       setStatus("Rebalance complete");
       onSuccess();
@@ -340,9 +367,11 @@ function YieldDripperCard() {
 }
 
 function CreateStrategySection({
+  vaultAddress,
   isAdmin,
   onSuccess,
 }: {
+  vaultAddress: `0x${string}`;
   isAdmin: boolean;
   onSuccess: () => void;
 }) {
@@ -368,7 +397,7 @@ function CreateStrategySection({
           onClick={() =>
             writeContract(
               {
-                address: VAULT_ADDRESS,
+                address: vaultAddress,
                 abi: VaultABI,
                 functionName: "createStrategy",
                 args: [delegate as `0x${string}`],
@@ -399,12 +428,14 @@ function CreateStrategySection({
 function StrategyAdmin({
   strategy,
   assetDecimals,
+  vaultAddress,
   isAdmin,
   isAuthority,
   onSuccess,
 }: {
   strategy: StrategyInfo;
   assetDecimals: number;
+  vaultAddress: `0x${string}`;
   isAdmin: boolean;
   isAuthority: boolean;
   onSuccess: () => void;
@@ -435,6 +466,7 @@ function StrategyAdmin({
         <WeightEditor
           strategyId={strategy.id}
           currentWeight={strategy.weight}
+          vaultAddress={vaultAddress}
           isAdmin={isAdmin}
           onSuccess={onSuccess}
         />
@@ -459,11 +491,13 @@ function StrategyAdmin({
         <RebalanceControl
           strategyId={strategy.id}
           assetDecimals={assetDecimals}
+          vaultAddress={vaultAddress}
           isAuthority={isAuthority}
         />
         <DeactivateButton
           strategyId={strategy.id}
           active={strategy.active}
+          vaultAddress={vaultAddress}
           isAdmin={isAdmin}
           onSuccess={onSuccess}
         />
@@ -475,11 +509,13 @@ function StrategyAdmin({
 function WeightEditor({
   strategyId,
   currentWeight,
+  vaultAddress,
   isAdmin,
   onSuccess,
 }: {
   strategyId: number;
   currentWeight: number;
+  vaultAddress: `0x${string}`;
   isAdmin: boolean;
   onSuccess: () => void;
 }) {
@@ -509,7 +545,7 @@ function WeightEditor({
           onClick={() =>
             writeContract(
               {
-                address: VAULT_ADDRESS,
+                address: vaultAddress,
                 abi: VaultABI,
                 functionName: "setStrategyWeight",
                 args: [BigInt(strategyId), Number(weight)],
@@ -1147,10 +1183,12 @@ function ValueSourceEditor({
 function RebalanceControl({
   strategyId,
   assetDecimals,
+  vaultAddress,
   isAuthority,
 }: {
   strategyId: number;
   assetDecimals: number;
+  vaultAddress: `0x${string}`;
   isAuthority: boolean;
 }) {
   const [delta, setDelta] = useState("");
@@ -1163,7 +1201,7 @@ function RebalanceControl({
     const signedDelta = direction === "pull" ? -rawDelta : rawDelta;
 
     writeContract({
-      address: VAULT_ADDRESS,
+      address: vaultAddress,
       abi: VaultABI,
       functionName: "rebalance",
       args: [BigInt(strategyId), signedDelta],
@@ -1222,11 +1260,13 @@ function RebalanceControl({
 function DeactivateButton({
   strategyId,
   active,
+  vaultAddress,
   isAdmin,
   onSuccess,
 }: {
   strategyId: number;
   active: boolean;
+  vaultAddress: `0x${string}`;
   isAdmin: boolean;
   onSuccess: () => void;
 }) {
@@ -1241,7 +1281,7 @@ function DeactivateButton({
         onClick={() =>
           writeContract(
             {
-              address: VAULT_ADDRESS,
+              address: vaultAddress,
               abi: VaultABI,
               functionName: "deactivateStrategy",
               args: [BigInt(strategyId)],

@@ -1,12 +1,12 @@
 import type { NextConfig } from "next";
-import path from "node:path";
 
+// Pin Turbopack's workspace root to the frontend directory. Computed at
+// runtime from process.cwd() so it works under both Next's CJS and ESM
+// config loaders — `__dirname` is unreliable here because Next rewrites
+// the module context when it transpiles this file.
 const nextConfig: NextConfig = {
-  // Pin Turbopack/Next's workspace root to this directory so it does not
-  // accidentally latch onto a parent lockfile when the repo is nested in a
-  // larger monorepo. Vercel honours this too.
   turbopack: {
-    root: path.join(__dirname),
+    root: process.cwd(),
   },
 };
 

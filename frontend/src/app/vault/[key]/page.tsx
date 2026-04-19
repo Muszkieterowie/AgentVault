@@ -58,7 +58,7 @@ export default function VaultPage({
           </p>
         </div>
         <Link
-          href="/admin"
+          href={`/admin/${vaultKey}`}
           className="inline-flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 py-2.5 text-sm font-medium text-zinc-300 transition-all hover:border-zinc-700 hover:bg-zinc-800/50"
         >
           <svg
